@@ -17,3 +17,8 @@ datasets/
     └── train/
 </pre>
 
+To verify, run:
+
+```bash
+python test_dataset.py
+```
