@@ -11,7 +11,9 @@ pip install -r requirements.txt
 
 Create a `datasets/` directory and move `ImageNet-S-50` into it. The final structure should look like this:
 
-datasets/ 
+<pre>
+datasets/
 └── ImageNet-S-50/ 
     └── train/
+</pre>
 
