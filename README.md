@@ -20,5 +20,5 @@ datasets/
 To verify, run:
 
 ```bash
-python test_dataset.py
+python test_dataset_setup.py
 ```
