@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader
@@ -26,9 +27,9 @@ def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
     )
 
 
-def init_models(out_features: int) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
+def init_models(in_features: int, out_features: int) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
     head = nn.Sequential(
-        nn.Linear(2048, 2048),
+        nn.Linear(in_features, 2048),
         nn.ReLU(),
         nn.Linear(2048, 2048),
         nn.ReLU(),
@@ -49,7 +50,9 @@ def train(batch_size=64):
     ])
 
     loader = init_data_loader('datasets/ImageNet-S-50/train', batch_size=batch_size)
-    caption_encoder, image_encoder, head = init_models(out_features=2 * batch_size)
+    caption_encoder, image_encoder, head = init_models(
+        in_features=2048, out_features=2 * batch_size
+    )
 
     optimiser = optim.Adam(
         list(image_encoder.parameters()) + list(head.parameters()),
@@ -60,7 +63,15 @@ def train(batch_size=64):
     for epoch in range(epochs):
         for images, labels in loader:
             # (1) Augment images twice and concat
-            # (2) Create similarity graph G using labels (captions)
+            aug_1 = augmentation(images)
+            aug_2 = augmentation(images)
+            auged_images = torch.concat(
+                [ aug_1, aug_2 ],
+                dim=0,
+            )
+
+
+            # (2) Create similarity graph G using labels (captions) divide by tau
             #       => Repeat labels (dog, cat, ... mouse, dog, cat, ..., mouse)
             #       => Since captions are invariant, maybe construct graph before training (?)
             # (3) Apply column-wise softmax to G
