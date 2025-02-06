@@ -7,6 +7,8 @@ from torchvision.models import resnet50
 from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
+from src.util import caption_from_labels
+
 
 def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
     transform = transforms.Compose([
@@ -36,14 +38,16 @@ def init_models(in_features: int, out_features: int) -> tuple[SentenceTransforme
         nn.Linear(2048, out_features),
     )
 
+    encoder = resnet50()
+
     return (
         SentenceTransformer("all-MiniLM-L6-v2").eval(),
-        resnet50(),
+        nn.Sequential(*list(encoder.children())[:-1]),
         head,
     )
 
 
-def train(batch_size=64):
+def train(batch_size=1024, tau=1):
     augmentation = transforms.Compose([
         autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
         transforms.Lambda(lambd=lambda x: x / 255.0),
@@ -63,24 +67,49 @@ def train(batch_size=64):
     for epoch in range(epochs):
         for images, labels in loader:
             # (1) Augment images twice and concat
-            aug_1 = augmentation(images)
-            aug_2 = augmentation(images)
-            auged_images = torch.concat(
-                [ aug_1, aug_2 ],
+            augmented_images = torch.concat(
+                [ augmentation(images), augmentation(images) ],
                 dim=0,
             )
-
 
             # (2) Create similarity graph G using labels (captions) divide by tau
             #       => Repeat labels (dog, cat, ... mouse, dog, cat, ..., mouse)
             #       => Since captions are invariant, maybe construct graph before training (?)
+            repeated_labels = labels.repeat(2)
+            captions = caption_from_labels(repeated_labels)
+
+            encoded_captions = caption_encoder.encode(captions)
+            sim_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
+            sim_graph = sim_graph / tau
+
             # (3) Apply column-wise softmax to G
+            softmax_sim_graph = nn.functional.softmax(sim_graph, dim=1)
+
+
             # (4) Forward pass stacked images
+            img_encoding = image_encoder(augmented_images).flatten(1)
+            output = nn.functional.softmax(head(img_encoding), dim=1)
+
+
             # (5) Compute loss
             #       => Dimension of head output is 2Nx2N where each column is the predicted similarity p
             #       => Cross-Entropy loss between G and p
+            loss = nn.functional.cross_entropy(output, softmax_sim_graph)
+
             # (6) Backprop
-            pass
+            optimiser.zero_grad()
+            loss.backward()
+            optimiser.step()
+
+        torch.save(
+            image_encoder.parameters(),
+            'resnet_encoder.pt',
+        )
+
+        torch.save(
+            head.parameters(),
+            'head_parameters.pt',
+        )
 
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+import torch
+
 label_mapping = {
     0: 'goldfish',
     1: 'tiger shark',
@@ -53,4 +55,7 @@ label_mapping = {
 
 def caption_from_label(label: int):
     name = label_mapping[label]
-    return f'picture of a {name}'
+    return f'a picture of a {name}'
+
+def caption_from_labels(labels_tensor: torch.Tensor):
+    return [caption_from_label(label.item()) for label in labels_tensor]
