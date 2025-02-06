@@ -6,8 +6,6 @@ from torchvision.models import resnet50
 from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
-import util
-
 
 def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
     transform = transforms.Compose([
@@ -61,6 +59,16 @@ def train(batch_size=64):
     epochs = 10
     for epoch in range(epochs):
         for images, labels in loader:
+            # (1) Augment images twice and concat
+            # (2) Create similarity graph G using labels (captions)
+            #       => Repeat labels (dog, cat, ... mouse, dog, cat, ..., mouse)
+            #       => Since captions are invariant, maybe construct graph before training (?)
+            # (3) Apply column-wise softmax to G
+            # (4) Forward pass stacked images
+            # (5) Compute loss
+            #       => Dimension of head output is 2Nx2N where each column is the predicted similarity p
+            #       => Cross-Entropy loss between G and p
+            # (6) Backprop
             pass
 
 
