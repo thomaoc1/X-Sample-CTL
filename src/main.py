@@ -43,9 +43,6 @@ def init_models(out_features: int) -> tuple[SentenceTransformer, nn.Module, nn.M
         head,
     )
 
-def caption_from_label(label: int):
-    name = util.label_mapping[label]
-    return f'picture of a {name}'
 
 def train(batch_size=64):
     augmentation = transforms.Compose([

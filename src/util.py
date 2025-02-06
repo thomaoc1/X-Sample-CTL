@@ -50,3 +50,7 @@ label_mapping = {
     48: 'carbonara',
     49: 'agaric'
 }
+
+def caption_from_label(label: int):
+    name = label_mapping[label]
+    return f'picture of a {name}'
