@@ -29,9 +29,9 @@ def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
     )
 
 
-def init_models(in_features: int, out_features: int) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
+def init_models(out_features: int, device: str) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
     head = nn.Sequential(
-        nn.Linear(in_features, 2048),
+        nn.Linear(2048, 2048),
         nn.ReLU(),
         nn.Linear(2048, 2048),
         nn.ReLU(),
@@ -41,19 +41,20 @@ def init_models(in_features: int, out_features: int) -> tuple[SentenceTransforme
     encoder = resnet50()
 
     return (
-        SentenceTransformer("all-MiniLM-L6-v2").eval(),
-        nn.Sequential(*list(encoder.children())[:-1]),
-        head,
+        SentenceTransformer("all-MiniLM-L6-v2").to(device),
+        nn.Sequential(*list(encoder.children())[:-1]).to(device),
+        head.to(device),
     )
 
 
 def compute_similarity_graph(labels: list, encoder: SentenceTransformer):
-     captioned_labels = caption_from_labels(labels)
-     encoded_captions = encoder.encode(captioned_labels)
-     return encoder.similarity(encoded_captions, encoded_captions)
+     with torch.no_grad():
+         captioned_labels = caption_from_labels(labels)
+         encoded_captions = encoder.encode(captioned_labels)
+         return encoder.similarity(encoded_captions, encoded_captions)
 
 
-def train(class_labels: list, batch_size=1024, tau=1):
+def train(class_labels: list, batch_size=1024, tau=1, device='cpu'):
     augmentation = transforms.Compose([
         autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
         transforms.Lambda(lambd=lambda x: x / 255.0),
@@ -61,7 +62,7 @@ def train(class_labels: list, batch_size=1024, tau=1):
 
     loader = init_data_loader('datasets/ImageNet-S-50/train', batch_size=batch_size)
     caption_encoder, image_encoder, head = init_models(
-        in_features=2048, out_features=128,
+        out_features=128, device=device
     )
 
     similarity_graph = compute_similarity_graph(class_labels, caption_encoder) / tau
@@ -78,28 +79,29 @@ def train(class_labels: list, batch_size=1024, tau=1):
             augmented_images = torch.concat(
                 [ augmentation(images), augmentation(images) ],
                 dim=0,
-            )
-            labels = labels.repeat(2)
+            ).to(device)
+
+            labels = labels.repeat(2).to(device)
 
             # (2) Extract sim graph for labels
             sub_sim_graph = similarity_graph[labels][:, labels]
 
             # (3) Apply column-wise softmax to G
-            softmax_sim_graph = nn.functional.softmax(sub_sim_graph, dim=1)
+            softmax_sim_graph = nn.functional.softmax(sub_sim_graph, dim=1).to(device)
 
             # (4) Forward pass
             backbone_encoding = image_encoder(augmented_images).flatten(1)
             image_encodings = head(backbone_encoding)
 
+            image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
             image_sim_graph = image_encodings @ image_encodings.T
-            output = nn.functional.softmax(image_sim_graph / tau, dim=1)
 
             # (5) Compute loss
-            loss = nn.functional.cross_entropy(output, softmax_sim_graph)
+            loss = nn.functional.cross_entropy(image_sim_graph / tau, softmax_sim_graph)
             optimiser.zero_grad()
             loss.backward()
             optimiser.step()
-            print(loss)
+            print(loss.item())
 
 
         torch.save(
@@ -116,5 +118,6 @@ def train(class_labels: list, batch_size=1024, tau=1):
 if __name__ == '__main__':
     train(
         class_labels=[i for i in range(50)],
-        batch_size=64,
+        batch_size=4,
+        device='cuda' if torch.cuda.is_available() else 'cpu',
     )
