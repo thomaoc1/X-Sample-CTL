@@ -57,5 +57,5 @@ def caption_from_label(label: int):
     name = label_mapping[label]
     return f'a picture of a {name}'
 
-def caption_from_labels(labels_tensor: torch.Tensor):
-    return [caption_from_label(label.item()) for label in labels_tensor]
+def caption_from_labels(labels_tensor: list):
+    return [caption_from_label(label) for label in labels_tensor]
