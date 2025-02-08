@@ -1,13 +1,19 @@
+import time
 import torch
 import torch.nn as nn
-from torch import optim
+import torch.optim as optim
+from torch.cuda.amp import GradScaler, autocast
+from torchlars import LARS
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.models import resnet50
 from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
-from src.util import caption_from_labels
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+from util import caption_from_labels
 
 
 def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
@@ -26,6 +32,7 @@ def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
         batch_size=batch_size,
         shuffle=True,
         pin_memory=True,
+        num_workers=4,
     )
 
 
@@ -41,9 +48,9 @@ def init_models(out_features: int, device: str) -> tuple[SentenceTransformer, nn
     encoder = resnet50()
 
     return (
-        SentenceTransformer("all-MiniLM-L6-v2").to(device),
-        nn.Sequential(*list(encoder.children())[:-1]).to(device),
-        head.to(device),
+        SentenceTransformer("all-MiniLM-L6-v2"),
+        nn.parallel.DataParallel(nn.Sequential(*list(encoder.children())[:-1])).to(device),
+        nn.parallel.DataParallel(head.to(device)),
     )
 
 
@@ -54,32 +61,40 @@ def compute_similarity_graph(labels: list, encoder: SentenceTransformer):
          return encoder.similarity(encoded_captions, encoded_captions)
 
 
-def train(class_labels: list, batch_size=1024, tau=1, device='cpu'):
+def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
     augmentation = transforms.Compose([
         autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
         transforms.Lambda(lambd=lambda x: x / 255.0),
     ])
+
 
     loader = init_data_loader('datasets/ImageNet-S-50/train', batch_size=batch_size)
     caption_encoder, image_encoder, head = init_models(
         out_features=128, device=device
     )
 
+
     similarity_graph = compute_similarity_graph(class_labels, caption_encoder) / tau
+    similarity_graph = similarity_graph.to(device)
 
-    optimiser = optim.Adam(
-        list(image_encoder.parameters()) + list(head.parameters()),
-        lr=1e-4,
-    )
+    base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
+    optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
+    #optimiser = optim.AdamW(list(image_encoder.parameters()) + list(head.parameters()), lr=3e-4, weight_decay=1e-4)
 
-    epochs = 10
+    scaler = GradScaler()
+
+    epochs = 100
+    epoch_losses = []
     for epoch in range(epochs):
+        epoch_loss = 0
         for images, labels in loader:
+            optimiser.zero_grad()
             # (1) Augment images twice and concat
+            images = images.to(device)
             augmented_images = torch.concat(
                 [ augmentation(images), augmentation(images) ],
                 dim=0,
-            ).to(device)
+            )
 
             labels = labels.repeat(2).to(device)
 
@@ -87,37 +102,44 @@ def train(class_labels: list, batch_size=1024, tau=1, device='cpu'):
             sub_sim_graph = similarity_graph[labels][:, labels]
 
             # (3) Apply column-wise softmax to G
-            softmax_sim_graph = nn.functional.softmax(sub_sim_graph, dim=1).to(device)
+            softmax_sim_graph = nn.functional.softmax(sub_sim_graph / tau, dim=1)
 
             # (4) Forward pass
-            backbone_encoding = image_encoder(augmented_images).flatten(1)
-            image_encodings = head(backbone_encoding)
+            with autocast(dtype=torch.float16):
+                backbone_encoding = image_encoder(augmented_images).flatten(1)
+                image_encodings = head(backbone_encoding)
 
-            image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
-            image_sim_graph = image_encodings @ image_encodings.T
+                image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
+                image_sim_graph = image_encodings @ image_encodings.T
 
             # (5) Compute loss
             loss = nn.functional.cross_entropy(image_sim_graph / tau, softmax_sim_graph)
-            optimiser.zero_grad()
-            loss.backward()
-            optimiser.step()
-            print(loss.item())
 
+            scaler.scale(loss).backward()
+            scaler.step(optimiser)
+            scaler.update()
 
-        torch.save(
-            image_encoder.parameters(),
+            epoch_loss += loss.item()
+
+        avg_loss = epoch_loss / len(loader)
+        epoch_losses.append(avg_loss)
+        print(f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}", flush=True)
+
+        torch.module.save(
+            image_encoder.state_dict(),
             'resnet_encoder.pt',
         )
 
-        torch.save(
-            head.parameters(),
+        torch.module.save(
+            head.state_dict(),
             'head_parameters.pt',
         )
 
 
 if __name__ == '__main__':
+    print(f"Available GPUs: {torch.cuda.device_count()}", flush=True)
     train(
         class_labels=[i for i in range(50)],
-        batch_size=4,
+        batch_size=1024,
         device='cuda' if torch.cuda.is_available() else 'cpu',
-    )
+    )  
