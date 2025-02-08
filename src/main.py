@@ -85,6 +85,7 @@ def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
 
     epochs = 100
     epoch_losses = []
+    print('Training', flush=True)
     for epoch in range(epochs):
         epoch_loss = 0
         for images, labels in loader:
@@ -125,12 +126,12 @@ def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
         epoch_losses.append(avg_loss)
         print(f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}", flush=True)
 
-        torch.module.save(
+        torch.save(
             image_encoder.state_dict(),
             'resnet_encoder.pt',
         )
 
-        torch.module.save(
+        torch.save(
             head.state_dict(),
             'head_parameters.pt',
         )
@@ -138,6 +139,7 @@ def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
 
 if __name__ == '__main__':
     print(f"Available GPUs: {torch.cuda.device_count()}", flush=True)
+
     train(
         class_labels=[i for i in range(50)],
         batch_size=1024,
