@@ -1,4 +1,5 @@
 import torch
+from sentence_transformers import SentenceTransformer
 
 label_mapping = {
     0: 'goldfish',
@@ -59,3 +60,5 @@ def caption_from_label(label: int):
 
 def caption_from_labels(labels_tensor: list):
     return [caption_from_label(label) for label in labels_tensor]
+
+
