@@ -92,13 +92,13 @@ class XClrTrainer:
         )
         return augmented_images, labels
 
-    def _save_model_state(self):
+    def _save_model_state(self, checkpoint_path: str):
         torch.save(
             self._image_encoder.state_dict(),
-            'image_encoder.pt',
+            checkpoint_path
         )
 
-    def train(self, epochs: int = 100):
+    def train(self, checkpoint_path: str, epochs: int = 100):
         scaler = GradScaler()
         epoch_losses = []
         for epoch in range(epochs):
@@ -129,15 +129,13 @@ class XClrTrainer:
             epoch_losses.append(avg_loss)
             print(f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}", flush=True)
 
-            self._save_model_state()
+            self._save_model_state(checkpoint_path)
 
 
 if __name__ == '__main__':
-    print(f"Available GPUs: {torch.cuda.device_count()}", flush=True)
-
     trainer = XClrTrainer(
         dataset_path='datasets/ImageNet-S-50',
         num_classes=50,
         batch_size=1024,
     )
-    trainer.train()
+    trainer.train(checkpoint_path='checkpoints/')
