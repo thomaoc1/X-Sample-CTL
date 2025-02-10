@@ -80,6 +80,7 @@ class XClrTrainer:
             captioned_labels = caption_from_labels(self._class_labels)
             encoded_captions = encoder.encode(captioned_labels)
             self._similarity_graph = encoder.similarity(encoded_captions, encoded_captions) / self._tau_s
+            self._similarity_graph = self._similarity_graph.to(self._device)
 
     def _double_aug(self, images, labels):
         labels = labels.repeat(2).to(self._device)
