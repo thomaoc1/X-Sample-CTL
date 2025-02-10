@@ -11,16 +11,19 @@ from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
 import os
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from util import caption_from_labels
 
 
 def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.PILToTensor(),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.PILToTensor(),
+        ]
+    )
 
     dataset = ImageFolder(
         root=path,
@@ -36,54 +39,65 @@ def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
     )
 
 
-def init_models(out_features: int, device: str) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
+def init_models(out_features: int, device: str, load_path = None) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
+
     head = nn.Sequential(
         nn.Linear(2048, 2048),
         nn.ReLU(),
         nn.Linear(2048, 2048),
         nn.ReLU(),
         nn.Linear(2048, out_features),
-    )
+    ).to(device)
 
-    encoder = resnet50()
+
+    image_encoder = resnet50()
+    image_encoder = nn.Sequential(*list(image_encoder.children())[:-1]).to(device)
+
+    if load_path:
+        try:
+            image_encoder.load_state_dict(torch.load(f"{load_path}-image_encoder.pt", map_location=device))
+            head.load_state_dict(torch.load(f"{load_path}-head.pt", map_location=device))
+            print("Loaded pre-trained weights successfully.")
+        except FileNotFoundError:
+            print("No pre-trained weights found. Training from scratch.")
 
     return (
         SentenceTransformer("all-MiniLM-L6-v2").eval(),
-        nn.Sequential(*list(encoder.children())[:-1]).to(device),
-        head.to(device),
+        image_encoder,
+        head,
     )
 
 
 def compute_similarity_graph(labels: list, encoder: SentenceTransformer):
-     with torch.no_grad():
-         captioned_labels = caption_from_labels(labels)
-         encoded_captions = encoder.encode(captioned_labels)
-         return encoder.similarity(encoded_captions, encoded_captions)
+    with torch.no_grad():
+        captioned_labels = caption_from_labels(labels)
+        encoded_captions = encoder.encode(captioned_labels)
+        return encoder.similarity(encoded_captions, encoded_captions)
 
 
-def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, device='cpu'):
-    augmentation = transforms.Compose([
-        autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
-        transforms.Lambda(lambd=lambda x: x / 255.0),
-    ])
-
+def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, device='cpu', load=False):
+    augmentation = transforms.Compose(
+        [
+            autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
+            transforms.Lambda(lambd=lambda x: x / 255.0),
+        ]
+    )
 
     loader = init_data_loader('datasets/ImageNet-S-50/train', batch_size=batch_size)
     caption_encoder, image_encoder, head = init_models(
         out_features=128, device=device
     )
 
-
     similarity_graph = compute_similarity_graph(class_labels, caption_encoder) / tau
     similarity_graph = similarity_graph.to(device)
 
-    #base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
-    #optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
+    # base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
+    # optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
     optimiser = optim.AdamW(list(image_encoder.parameters()) + list(head.parameters()), lr=3e-4, weight_decay=1e-4)
 
     scaler = GradScaler()
 
-    epochs = 30 
+    epochs = 30
     epoch_losses = []
     print('Training', flush=True)
     for epoch in range(epochs):
@@ -93,7 +107,7 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
             # (1) Augment images twice and concat
             images = images.to(device)
             augmented_images = torch.concat(
-                [ augmentation(images), augmentation(images) ],
+                [augmentation(images), augmentation(images)],
                 dim=0,
             )
 
@@ -128,12 +142,12 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
 
         torch.save(
             image_encoder.state_dict(),
-            checkpoint_path + '-resnet_encoder.pt',
+            checkpoint_path + '-image_encoder.pt',
         )
 
         torch.save(
             head.state_dict(),
-            checkpoint_path + '-head_parameters.pt',
+            checkpoint_path + '-head.pt',
         )
 
 
@@ -143,4 +157,4 @@ if __name__ == '__main__':
         checkpoint_path='checkpoints/b256-AdamW-3e-4',
         batch_size=256,
         device='cuda' if torch.cuda.is_available() else 'cpu',
-    )  
+    )
