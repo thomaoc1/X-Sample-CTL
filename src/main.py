@@ -135,6 +135,6 @@ if __name__ == '__main__':
     trainer = XClrTrainer(
         dataset_path='datasets/ImageNet-S-50',
         num_classes=50,
-        batch_size=16,
+        batch_size=256,
     )
-    trainer.train(checkpoint_path='checkpoints/')
+    trainer.train(checkpoint_path='checkpoints/f{b256-AdamW-1e-3}.pt')
