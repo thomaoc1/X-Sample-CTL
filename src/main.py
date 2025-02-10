@@ -72,7 +72,7 @@ class XClrTrainer:
         # optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
         self._optimiser = optim.AdamW(
             self._image_encoder.parameters(),
-            lr=3e-4,
+            lr=1e-3,
             weight_decay=1e-4,
         )
 
@@ -136,6 +136,6 @@ if __name__ == '__main__':
     trainer = XClrTrainer(
         dataset_path='datasets/ImageNet-S-50',
         num_classes=50,
-        batch_size=1024,
+        batch_size=16,
     )
     trainer.train(checkpoint_path='checkpoints/')

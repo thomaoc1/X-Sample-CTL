@@ -1,5 +1,6 @@
 import torch.nn as nn
 from torchvision.models import resnet50
+import torch.utils.checkpoint as checkpoint
 
 class ImageEncoder(nn.Module):
     def __init__(self, out_features):
@@ -15,6 +16,6 @@ class ImageEncoder(nn.Module):
         )
 
     def forward(self, x):
-        x = self._backbone(x)
+        x = checkpoint.checkpoint(self._backbone, x, use_reentrant=False)
         x = x.flatten(1)
         return self._head(x)
