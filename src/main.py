@@ -63,9 +63,7 @@ class XClrTrainer:
         )
 
     def _init_model(self):
-        self._image_encoder = nn.DataParallel(
-            ImageEncoder(out_features=128)
-        ).to(self._device)
+        self._image_encoder = ImageEncoder(out_features=128).to(self._device)
 
     def _init_optimiser(self):
         # base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
