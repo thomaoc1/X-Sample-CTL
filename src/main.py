@@ -48,9 +48,9 @@ def init_models(out_features: int, device: str) -> tuple[SentenceTransformer, nn
     encoder = resnet50()
 
     return (
-        SentenceTransformer("all-MiniLM-L6-v2"),
-        nn.parallel.DataParallel(nn.Sequential(*list(encoder.children())[:-1])).to(device),
-        nn.parallel.DataParallel(head.to(device)),
+        SentenceTransformer("all-MiniLM-L6-v2").eval(),
+        nn.Sequential(*list(encoder.children())[:-1]).to(device),
+        head.to(device),
     )
 
 
@@ -61,7 +61,7 @@ def compute_similarity_graph(labels: list, encoder: SentenceTransformer):
          return encoder.similarity(encoded_captions, encoded_captions)
 
 
-def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
+def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, device='cpu'):
     augmentation = transforms.Compose([
         autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
         transforms.Lambda(lambd=lambda x: x / 255.0),
@@ -77,13 +77,13 @@ def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
     similarity_graph = compute_similarity_graph(class_labels, caption_encoder) / tau
     similarity_graph = similarity_graph.to(device)
 
-    base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
-    optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
-    #optimiser = optim.AdamW(list(image_encoder.parameters()) + list(head.parameters()), lr=3e-4, weight_decay=1e-4)
+    #base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
+    #optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
+    optimiser = optim.AdamW(list(image_encoder.parameters()) + list(head.parameters()), lr=3e-4, weight_decay=1e-4)
 
     scaler = GradScaler()
 
-    epochs = 100
+    epochs = 30 
     epoch_losses = []
     print('Training', flush=True)
     for epoch in range(epochs):
@@ -128,20 +128,19 @@ def train(class_labels: list, batch_size=1024, tau=0.1, device='cpu'):
 
         torch.save(
             image_encoder.state_dict(),
-            'resnet_encoder.pt',
+            checkpoint_path + '-resnet_encoder.pt',
         )
 
         torch.save(
             head.state_dict(),
-            'head_parameters.pt',
+            checkpoint_path + '-head_parameters.pt',
         )
 
 
 if __name__ == '__main__':
-    print(f"Available GPUs: {torch.cuda.device_count()}", flush=True)
-
     train(
         class_labels=[i for i in range(50)],
-        batch_size=1024,
+        checkpoint_path='checkpoints/b256-AdamW-3e-4',
+        batch_size=256,
         device='cuda' if torch.cuda.is_available() else 'cpu',
     )  
