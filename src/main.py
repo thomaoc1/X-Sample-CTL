@@ -94,6 +94,7 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
     # base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
     # optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
     optimiser = optim.AdamW(list(image_encoder.parameters()) + list(head.parameters()), lr=3e-4, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=len(loader), eta_min=0, last_epoch=-1)
 
     scaler = GradScaler()
 
@@ -139,6 +140,9 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
         avg_loss = epoch_loss / len(loader)
         epoch_losses.append(avg_loss)
         print(f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}", flush=True)
+
+        if epoch >= 10:
+            scheduler.step()
 
         torch.save(
             image_encoder.state_dict(),
