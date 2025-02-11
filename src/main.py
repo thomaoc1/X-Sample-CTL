@@ -154,11 +154,16 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
             checkpoint_path + '-head.pt',
         )
 
+        torch.save(
+            optimiser.state_dict(),
+            checkpoint_path + '-optimiser.pt',
+        )
+
 
 if __name__ == '__main__':
     train(
         class_labels=[i for i in range(50)],
-        checkpoint_path='checkpoints/b256-AdamW-3e-4',
+        checkpoint_path='checkpoints/b256-AdamW-3e-4-CosineAnnealing',
         batch_size=256,
         device='cuda' if torch.cuda.is_available() else 'cpu',
     )
