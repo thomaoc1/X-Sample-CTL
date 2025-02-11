@@ -85,7 +85,7 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
 
     loader = init_data_loader('datasets/ImageNet-S-50/train', batch_size=batch_size)
     caption_encoder, image_encoder, head = init_models(
-        out_features=128, device=device
+        out_features=128, device=device, load_path=checkpoint_path if load else None
     )
 
     similarity_graph = compute_similarity_graph(class_labels, caption_encoder) / tau
@@ -98,7 +98,7 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
 
     scaler = GradScaler()
 
-    epochs = 30
+    epochs = 100
     epoch_losses = []
     print('Training', flush=True)
     for epoch in range(epochs):
