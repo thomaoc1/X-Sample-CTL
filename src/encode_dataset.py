@@ -44,9 +44,8 @@ def load_simclr(device: str, path: str):
         map_location=device,
     )
     model_weights = checkpoint_dict['state_dict']
-    model = ResNetEncoder(out_dim=128)
+    model = ResNetEncoder(detach_head=True)
     model.load_state_dict(model_weights)
-    model._backbone.fc = nn.Identity()
     return model
 
 

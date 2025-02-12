@@ -20,6 +20,7 @@ class ResNetEncoder(nn.Module):
 
     def forward(self, x):
         x = self._backbone(x)
+        x = x.flatten(1)
         if not self._is_head_detached:
             x = self._head(x)
         return x

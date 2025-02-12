@@ -1,19 +1,19 @@
 import time
 import torch
+import os
 import torch.nn as nn
 import torch.optim as optim
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
-from torchvision.models import resnet50
 from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
-import os
+from encoder import ResNetEncoder
+from util import caption_from_labels
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from util import caption_from_labels
 
 
 def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
@@ -38,23 +38,11 @@ def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
     )
 
 
-def init_models(out_features: int, device: str, load_path = None) -> tuple[SentenceTransformer, nn.Module, nn.Module]:
-
-    head = nn.Sequential(
-        nn.Linear(2048, 2048),
-        nn.ReLU(),
-        nn.Linear(2048, 2048),
-        nn.ReLU(),
-        nn.Linear(2048, out_features),
-    ).to(device)
-
-    image_encoder = resnet50()
-    image_encoder = nn.Sequential(*list(image_encoder.children())[:-1]).to(device)
-
+def init_models(out_features: int, device: str, load_path = None) -> tuple[SentenceTransformer, nn.Module]:
+    image_encoder = ResNetEncoder(out_dim=out_features).to(device)
     if load_path:
         try:
             image_encoder.load_state_dict(torch.load(f"{load_path}-image_encoder.pt", map_location=device))
-            head.load_state_dict(torch.load(f"{load_path}-head.pt", map_location=device))
             print("Loaded pre-trained weights successfully.")
         except FileNotFoundError:
             print("No pre-trained weights found. Training from scratch.")
@@ -62,7 +50,6 @@ def init_models(out_features: int, device: str, load_path = None) -> tuple[Sente
     return (
         SentenceTransformer("all-MiniLM-L6-v2").eval(),
         image_encoder,
-        head,
     )
 
 
@@ -82,7 +69,7 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
     )
 
     loader = init_data_loader('datasets/ImageNet-S-50/train', batch_size=batch_size)
-    caption_encoder, image_encoder, head = init_models(
+    caption_encoder, image_encoder = init_models(
         out_features=128, device=device, load_path=checkpoint_path if load else None
     )
 
@@ -91,10 +78,10 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
 
     # base_optimizer = optim.SGD(list(image_encoder.parameters()) + list(head.parameters()), lr=7.5e-2)
     # optimiser = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.005)
-    optimiser = optim.AdamW(list(image_encoder.parameters()) + list(head.parameters()), lr=3e-4, weight_decay=1e-4)
+    optimiser = optim.AdamW(image_encoder.parameters(), lr=3e-4, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=len(loader), eta_min=0, last_epoch=-1)
 
-    scaler = GradScaler()
+    scaler = GradScaler(device)
 
     epochs = 100
     epoch_losses = []
@@ -105,14 +92,10 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
             optimiser.zero_grad()
             # (1) Augment images twice and concat
             images = images.to(device)
-            start = time.time()
             augmented_images = torch.concat(
                 [augmentation(images), augmentation(images)],
                 dim=0,
             )
-            print(time.time() - start)
-
-            start = time.time()
             labels = labels.repeat(2).to(device)
 
             # (2) Extract sim graph for labels
@@ -122,16 +105,14 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
             softmax_sim_graph = nn.functional.softmax(sub_sim_graph / tau, dim=1)
 
             # (4) Forward pass
-            with autocast(dtype=torch.float16):
-                backbone_encoding = image_encoder(augmented_images).flatten(1)
-                image_encodings = head(backbone_encoding)
+            with autocast(device, dtype=torch.float16):
+                image_encodings = image_encoder(augmented_images)
 
                 image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
                 image_sim_graph = image_encodings @ image_encodings.T
 
             # (5) Compute loss
             loss = nn.functional.cross_entropy(image_sim_graph / tau, softmax_sim_graph)
-            print(f'Forward pass & loss calculation {time.time() - start}')
 
             scaler.scale(loss).backward()
             scaler.step(optimiser)
@@ -149,11 +130,6 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
         torch.save(
             image_encoder.state_dict(),
             checkpoint_path + '-image_encoder.pt',
-        )
-
-        torch.save(
-            head.state_dict(),
-            checkpoint_path + '-head.pt',
         )
 
         torch.save(
