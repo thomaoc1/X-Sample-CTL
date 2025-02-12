@@ -5,7 +5,7 @@ class ResNetEncoder(nn.Module):
     def __init__(self, out_dim: int | None = 128, detach_head=False):
         super().__init__()
         if not detach_head and not out_dim:
-            raise ValueError("If in detached is not detached you must have an output dimension")
+            raise ValueError("If head is not detached you must have an output dimension")
 
         self._is_head_detached = detach_head
         self._backbone = models.resnet50()
