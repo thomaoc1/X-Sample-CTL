@@ -55,16 +55,13 @@ class XClrTrainer:
             except FileNotFoundError:
                 print("No pre-trained weights found. Training from scratch.")
 
-        # return (
-        #     SentenceTransformer("all-MiniLM-L6-v2").eval(),
-        # )
 
-
-def compute_similarity_graph(labels: list, encoder: SentenceTransformer):
-    with torch.no_grad():
-        captioned_labels = caption_from_labels(labels)
-        encoded_captions = encoder.encode(captioned_labels)
-        return encoder.similarity(encoded_captions, encoded_captions)
+    def _compute_similarity_graph(self, labels: list):
+        caption_encoder = SentenceTransformer("all-MiniLM-L6-v2").eval()
+        with torch.no_grad():
+            captioned_labels = caption_from_labels(labels)
+            encoded_captions = caption_encoder(captioned_labels)
+            self.similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
 
 
 def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, device='cpu', load=False):
