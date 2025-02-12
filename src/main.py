@@ -95,9 +95,12 @@ class XClrTrainer:
         )
         return augmented_images, labels.repeat(2)
 
-    def _log(self, epoch: int, epoch_loss: float):
+    def _log(self, epoch: int, epoch_loss: float, start_time: float):
         avg_loss = epoch_loss / len(self._data_loader)
-        print(f"Epoch {epoch + 1}/{self._epochs} - Loss: {avg_loss:.4f}", flush=True)
+        print(
+            f"Epoch {epoch + 1}/{self._epochs} - Loss: {avg_loss:.4f} - Time Taken {((time.time() - start_time) / 60):2f}",
+            flush=True
+        )
 
     def _save(self, optimiser: torch.optim.Optimizer):
         torch.save(
@@ -117,6 +120,7 @@ class XClrTrainer:
         scaler = GradScaler()
         for epoch in range(self._epochs):
             epoch_loss = 0
+            start = time.time()
             for images, labels in self._data_loader:
                 optimiser.zero_grad()
 
@@ -139,8 +143,8 @@ class XClrTrainer:
 
                 epoch_loss += loss.item()
 
+            self._log(epoch=epoch, epoch_loss=epoch_loss, start_time=start)
             self._save(optimiser=optimiser)
-
 
 
 if __name__ == '__main__':
