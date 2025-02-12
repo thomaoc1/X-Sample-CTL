@@ -60,7 +60,6 @@ class XClrTrainer(ClrTrainer):
         self._labels = [i for i in range(label_range)]
         self._compute_similarity_graph()
 
-
     def _compute_similarity_graph(self):
         caption_encoder = SentenceTransformer("all-MiniLM-L6-v2").eval()
         with torch.no_grad():
@@ -69,39 +68,16 @@ class XClrTrainer(ClrTrainer):
             self._similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
             self._similarity_graph = self._similarity_graph.to(self._device)
 
+    def _compute_targets(self, **kwargs):
+        labels = kwargs['labels']
+        labels = labels.repeat(2).to(self._device)
+        sub_sim_graph = self._similarity_graph[labels][:, labels]
+        return nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
 
-    def train(self):
-        optimiser = optim.AdamW(self._image_encoder.parameters(), lr=3e-4, weight_decay=1e-4)
+    def _compute_loss(self, encoding_similarities: torch.Tensor, target: torch.Tensor):
+        return nn.functional.cross_entropy(encoding_similarities / self._tau, target)
 
-        print('=== Starting Training ===', flush=True)
-        scaler = GradScaler()
-        for epoch in range(self._epochs):
-            epoch_loss = 0
-            start = time.time()
-            for images, labels in self._data_loader:
-                optimiser.zero_grad()
 
-                images = images.to(self._device)
-                labels = labels.repeat(2).to(self._device)
-                augmented_images = self._double_aug(images)
-
-                sub_sim_graph = self._similarity_graph[labels][:, labels]
-                softmax_sim_graph = nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
-
-                with autocast(dtype=torch.float16):
-                    image_encodings = self._image_encoder(augmented_images)
-                    image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
-                    image_sim_graph = image_encodings @ image_encodings.T
-
-                loss = nn.functional.cross_entropy(image_sim_graph / self._tau, softmax_sim_graph)
-                scaler.scale(loss).backward()
-                scaler.step(optimiser)
-                scaler.update()
-
-                epoch_loss += loss.item()
-
-            self._log(epoch=epoch, epoch_loss=epoch_loss, start_time=start)
-            self._save(optimiser=optimiser)
 
 
 if __name__ == '__main__':

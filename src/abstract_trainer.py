@@ -1,6 +1,9 @@
 import time
+from abc import abstractmethod
+
 import torch
-from torch import nn
+from torch import nn, optim
+from torch.cpu.amp import GradScaler, autocast
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
@@ -81,3 +84,43 @@ class ClrTrainer:
             optimiser.state_dict(),
             self._encoder_checkpoint_path + '-optimiser.pt',
         )
+
+    @abstractmethod
+    def _compute_targets(self, **kwargs) -> torch.Tensor:
+        raise NotImplementedError("Must be implemented by child class")
+
+    @abstractmethod
+    def _compute_loss(self, encoding_similarities: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError("Must be implemented by child class")
+
+    def train(self):
+        optimiser = optim.AdamW(self._image_encoder.parameters(), lr=3e-4, weight_decay=1e-4)
+
+        print('=== Starting Training ===', flush=True)
+        scaler = GradScaler()
+        for epoch in range(self._epochs):
+            epoch_loss = 0
+            start = time.time()
+            for images, labels in self._data_loader:
+                optimiser.zero_grad()
+
+                images = images.to(self._device)
+                augmented_images = self._double_aug(images)
+
+                with autocast(dtype=torch.float16):
+                    image_encodings = self._image_encoder(augmented_images)
+                    image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
+                    encoding_similarities = image_encodings @ image_encodings.T
+
+                targets = self._compute_targets(labels=labels)
+                loss = self._compute_loss(encoding_similarities, targets)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimiser)
+                scaler.update()
+
+                epoch_loss += loss.item()
+
+            self._log(epoch=epoch, epoch_loss=epoch_loss, start_time=start)
+            self._save(optimiser=optimiser)
+
