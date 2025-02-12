@@ -42,7 +42,9 @@ def init_models(out_features: int, device: str, load_path = None) -> tuple[Sente
     image_encoder = ResNetEncoder(out_dim=out_features).to(device)
     if load_path:
         try:
-            image_encoder.load_state_dict(torch.load(f"{load_path}-image_encoder.pt", map_location=device))
+            image_encoder.load_state_dict(
+                torch.load(f"{load_path}-image_encoder.pt", map_location=device)
+            )
             print("Loaded pre-trained weights successfully.")
         except FileNotFoundError:
             print("No pre-trained weights found. Training from scratch.")
