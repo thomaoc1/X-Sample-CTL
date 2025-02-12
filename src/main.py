@@ -14,28 +14,32 @@ from util import caption_from_labels
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+class XClrTrainer:
+    def __init__(self, dataset_path: str, batch_size: int):
+        self._batch_size = batch_size
+        self._init_data_loader(path=dataset_path)
 
 
-def init_data_loader(path: str, batch_size: int = 64) -> DataLoader:
-    transform = transforms.Compose(
-        [
-            transforms.Resize((224, 224)),
-            transforms.PILToTensor(),
-        ]
-    )
+    def _init_data_loader(self, path: str):
+        transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.PILToTensor(),
+            ]
+        )
 
-    dataset = ImageFolder(
-        root=path,
-        transform=transform,
-    )
+        dataset = ImageFolder(
+            root=path,
+            transform=transform,
+        )
 
-    return DataLoader(
-        dataset=dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=8,
-    )
+        self._data_loader = DataLoader(
+            dataset=dataset,
+            batch_size=self._batch_size,
+            shuffle=True,
+            pin_memory=True,
+            num_workers=8,
+        )
 
 
 def init_models(out_features: int, device: str, load_path = None) -> tuple[SentenceTransformer, nn.Module]:
