@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
-from torchlars import LARS
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.models import resnet50
@@ -48,7 +47,6 @@ def init_models(out_features: int, device: str, load_path = None) -> tuple[Sente
         nn.ReLU(),
         nn.Linear(2048, out_features),
     ).to(device)
-
 
     image_encoder = resnet50()
     image_encoder = nn.Sequential(*list(image_encoder.children())[:-1]).to(device)
@@ -107,11 +105,14 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
             optimiser.zero_grad()
             # (1) Augment images twice and concat
             images = images.to(device)
+            start = time.time()
             augmented_images = torch.concat(
                 [augmentation(images), augmentation(images)],
                 dim=0,
             )
+            print(time.time() - start)
 
+            start = time.time()
             labels = labels.repeat(2).to(device)
 
             # (2) Extract sim graph for labels
@@ -130,6 +131,7 @@ def train(class_labels: list, checkpoint_path: str, batch_size=1024, tau=0.1, de
 
             # (5) Compute loss
             loss = nn.functional.cross_entropy(image_sim_graph / tau, softmax_sim_graph)
+            print(f'Forward pass & loss calculation {time.time() - start}')
 
             scaler.scale(loss).backward()
             scaler.step(optimiser)
@@ -164,6 +166,6 @@ if __name__ == '__main__':
     train(
         class_labels=[i for i in range(50)],
         checkpoint_path='checkpoints/b256-AdamW-3e-4-CosineAnnealing',
-        batch_size=256,
+        batch_size=64,
         device='cuda' if torch.cuda.is_available() else 'cpu',
     )

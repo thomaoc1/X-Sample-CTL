@@ -2,6 +2,8 @@ datasets/
 *.pt
 *.log
 *.sh
+checkpoints/
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
