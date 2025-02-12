@@ -18,9 +18,7 @@ def main():
 
     loader = DataLoader(
         dataset=imagenet_s_50,
-        batch_size=8,
-        shuffle=True,
-        pin_memory=True,
+        batch_size=1,
     )
 
     for image, label in loader:
