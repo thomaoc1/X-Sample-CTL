@@ -84,7 +84,6 @@ class XClrTrainer:
         caption_encoder = SentenceTransformer("all-MiniLM-L6-v2").eval()
         with torch.no_grad():
             captioned_labels = caption_from_labels(self._labels)
-            print(captioned_labels)
             encoded_captions = caption_encoder.encode(captioned_labels)
             self._similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
             self._similarity_graph = self._similarity_graph.to(self._device)
