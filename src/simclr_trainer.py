@@ -65,24 +65,23 @@ class SimClrTrainer(ClrTrainer):
         labels = labels.unsqueeze(dim=0) == labels.unsqueeze(dim=1)
         mask = torch.eye(labels.size(0), dtype=torch.bool)
         labels = labels[~mask].reshape(labels.size(0), -1).float()
-
         encoding_similarities = encoding_similarities[~mask].view(encoding_similarities.size(0), -1)
 
         positives = encoding_similarities[labels.bool()].view(labels.size(0), -1)
-        negatives = encoding_similarities[~labels.bool()].view(encoding_similarities.size(0) -1)
+        negatives = encoding_similarities[~labels.bool()].view(encoding_similarities.size(0), -1)
 
         logits = torch.cat([positives, negatives], dim=1)
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(self._device)
+        labels = torch.zeros(logits.size(0), dtype=torch.long).to(self._device)
 
-        logits = logits / self._tau
-        return torch.nn.functional.cross_entropy(logits, labels)
+        return torch.nn.functional.cross_entropy(logits / self._tau, labels)
 
 if __name__ == '__main__':
     trainer = SimClrTrainer(
         dataset_path='datasets/ImageNet-S-50/train',
-        batch_size=256,
+        batch_size=4,
         device='cuda' if torch.cuda.is_available() else 'cpu',
-        encoder_checkpoint_path='checkpoints/encoders/b256-simclr.pt'
+        encoder_checkpoint_path='checkpoints/encoders/b256-simclr.pt',
+        num_workers_dl=1,
     )
 
     trainer.train()
