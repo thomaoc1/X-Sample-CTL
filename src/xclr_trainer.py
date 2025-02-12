@@ -111,6 +111,6 @@ if __name__ == '__main__':
         dataset_path='datasets/ImageNet-S-50/train',
         encoder_checkpoint_path='checkpoints/b256-AdamW-3e-4-CosineAnnealing',
         device='cuda' if torch.cuda.is_available() else 'cpu',
-        num_worker_dl=1,
+        num_worker_dl=8,
     )
     trainer.train()
