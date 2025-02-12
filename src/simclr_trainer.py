@@ -61,7 +61,8 @@ class SimClrTrainer(ClrTrainer):
     def _compute_loss(self, **kwargs) -> torch.Tensor:
         encoding_similarities = kwargs['encoding_similarities']
 
-        labels = torch.arange(self._batch_size).repeat(2).to(self._device)
+        current_batch_size = int(encoding_similarities.size(0) / 2)
+        labels = torch.arange(current_batch_size).repeat(2).to(self._device)
         labels = labels.unsqueeze(dim=0) == labels.unsqueeze(dim=1)
         mask = torch.eye(labels.size(0), dtype=torch.bool)
         labels = labels[~mask].reshape(labels.size(0), -1).float()
