@@ -68,16 +68,12 @@ class XClrTrainer(ClrTrainer):
             self._similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
             self._similarity_graph = self._similarity_graph.to(self._device)
 
-    def _compute_targets(self, **kwargs):
-        labels = kwargs['labels']
+    def _compute_loss(self, **kwargs):
+        labels, encoding_similarities = kwargs['labels'], kwargs['encoding_similarities']
         labels = labels.repeat(2).to(self._device)
         sub_sim_graph = self._similarity_graph[labels][:, labels]
-        return nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
-
-    def _compute_loss(self, encoding_similarities: torch.Tensor, target: torch.Tensor):
+        target = nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
         return nn.functional.cross_entropy(encoding_similarities / self._tau, target)
-
-
 
 
 if __name__ == '__main__':

@@ -86,11 +86,7 @@ class ClrTrainer:
         )
 
     @abstractmethod
-    def _compute_targets(self, **kwargs) -> torch.Tensor:
-        raise NotImplementedError("Must be implemented by child class")
-
-    @abstractmethod
-    def _compute_loss(self, encoding_similarities: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def _compute_loss(self, **kwargs) -> torch.Tensor:
         raise NotImplementedError("Must be implemented by child class")
 
     def train(self):
@@ -112,8 +108,7 @@ class ClrTrainer:
                     image_encodings = nn.functional.normalize(image_encodings, p=2, dim=1)
                     encoding_similarities = image_encodings @ image_encodings.T
 
-                targets = self._compute_targets(labels=labels)
-                loss = self._compute_loss(encoding_similarities, targets)
+                loss = self._compute_loss(encoding_similarities=encoding_similarities, labels=labels)
 
                 scaler.scale(loss).backward()
                 scaler.step(optimiser)
