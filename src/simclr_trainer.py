@@ -39,7 +39,7 @@ class SimClrTrainer(ClrTrainer):
         initial_transform = transforms.Compose(
             [
                 transforms.PILToTensor(),
-                transforms.RandomResizedCrop(size),
+                transforms.RandomResizedCrop(size, antialias=True),
             ]
         )
 
@@ -78,10 +78,10 @@ class SimClrTrainer(ClrTrainer):
 if __name__ == '__main__':
     trainer = SimClrTrainer(
         dataset_path='datasets/ImageNet-S-50/train',
-        batch_size=4,
+        batch_size=256,
         device='cuda' if torch.cuda.is_available() else 'cpu',
         encoder_checkpoint_path='checkpoints/encoders/b256-simclr.pt',
-        num_workers_dl=1,
+        num_workers_dl=8,
     )
 
     trainer.train()
