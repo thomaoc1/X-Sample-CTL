@@ -15,9 +15,11 @@ from util import caption_from_labels
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 class XClrTrainer:
-    def __init__(self, dataset_path: str, batch_size: int):
+    def __init__(self, dataset_path: str, batch_size: int, device: str, head_out_features: int = 128, encoder_load_path: str | None = None):
         self._batch_size = batch_size
+        self._device = device
         self._init_data_loader(path=dataset_path)
+        self._init_encoder(out_features=128, load_path=encoder_load_path)
 
 
     def _init_data_loader(self, path: str):
@@ -42,21 +44,20 @@ class XClrTrainer:
         )
 
 
-def init_models(out_features: int, device: str, load_path = None) -> tuple[SentenceTransformer, nn.Module]:
-    image_encoder = ResNetEncoder(out_dim=out_features).to(device)
-    if load_path:
-        try:
-            image_encoder.load_state_dict(
-                torch.load(f"{load_path}-image_encoder.pt", map_location=device)
-            )
-            print("Loaded pre-trained weights successfully.")
-        except FileNotFoundError:
-            print("No pre-trained weights found. Training from scratch.")
+    def _init_encoder(self, out_features: int, load_path = None):
+        self._image_encoder = ResNetEncoder(out_dim=out_features).to(self._device)
+        if load_path:
+            try:
+                self._image_encoder.load_state_dict(
+                    torch.load(f"{load_path}-image_encoder.pt", map_location=self._device)
+                )
+                print("Loaded pre-trained weights successfully.")
+            except FileNotFoundError:
+                print("No pre-trained weights found. Training from scratch.")
 
-    return (
-        SentenceTransformer("all-MiniLM-L6-v2").eval(),
-        image_encoder,
-    )
+        # return (
+        #     SentenceTransformer("all-MiniLM-L6-v2").eval(),
+        # )
 
 
 def compute_similarity_graph(labels: list, encoder: SentenceTransformer):
