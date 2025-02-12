@@ -4,18 +4,16 @@ import os
 import torch.nn as nn
 import torch.optim as optim
 from torch.cuda.amp import GradScaler, autocast
-from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
-from encoder import ResNetEncoder
+from abstract_trainer import ClrTrainer
 from util import caption_from_labels
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-class XClrTrainer:
+class XClrTrainer(ClrTrainer):
     def __init__(
             self,
             dataset_path: str,
@@ -30,55 +28,38 @@ class XClrTrainer:
             epochs: int = 100,
             encoder_load_path: str | None = None,
     ):
-        self._batch_size = batch_size
-        self._epochs = epochs
-        self._tau = tau
-        self._tau_s = tau_s
-        self._device = device
-        self._labels = [i for i in range(label_range)]
-        self._encoder_checkpoint_path = encoder_checkpoint_path
-        self._init_data_loader(path=dataset_path, num_workers=num_worker_dl)
-        self._init_encoder(out_features=head_out_features, load_path=encoder_load_path)
-        self._compute_similarity_graph()
-
-        self._augmentation = transforms.Compose(
+        augmentation = transforms.Compose(
             [
                 autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
                 transforms.Lambda(lambd=lambda x: x / 255.0),
             ]
         )
 
-    def _init_data_loader(self, path: str, num_workers: int):
-        transform = transforms.Compose(
+        initial_transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
                 transforms.PILToTensor(),
             ]
         )
 
-        dataset = ImageFolder(
-            root=path,
-            transform=transform,
+        super().__init__(
+            dataset_path=dataset_path ,
+            batch_size=batch_size,
+            device=device,
+            encoder_checkpoint_path=encoder_checkpoint_path,
+            head_out_features=head_out_features,
+            num_worker_dl=num_worker_dl,
+            epochs=epochs,
+            encoder_load_path=encoder_load_path,
+            initial_transform=initial_transform,
+            image_augmentation_transform=augmentation,
         )
 
-        self._data_loader = DataLoader(
-            dataset=dataset,
-            batch_size=self._batch_size,
-            shuffle=True,
-            pin_memory=True,
-            num_workers=num_workers,
-        )
+        self._tau = tau
+        self._tau_s = tau_s
+        self._labels = [i for i in range(label_range)]
+        self._compute_similarity_graph()
 
-    def _init_encoder(self, out_features: int, load_path=None):
-        self._image_encoder = ResNetEncoder(out_dim=out_features).to(self._device)
-        if load_path:
-            try:
-                self._image_encoder.load_state_dict(
-                    torch.load(f"{load_path}-image_encoder.pt", map_location=self._device)
-                )
-                print("Loaded pre-trained weights successfully.")
-            except FileNotFoundError:
-                print("No pre-trained weights found. Training from scratch.")
 
     def _compute_similarity_graph(self):
         caption_encoder = SentenceTransformer("all-MiniLM-L6-v2").eval()
@@ -88,30 +69,6 @@ class XClrTrainer:
             self._similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
             self._similarity_graph = self._similarity_graph.to(self._device)
 
-    def _double_aug_and_labels(self, images: torch.Tensor, labels: torch.Tensor):
-        augmented_images = torch.concat(
-            [self._augmentation(images), self._augmentation(images)],
-            dim=0,
-        )
-        return augmented_images, labels.repeat(2)
-
-    def _log(self, epoch: int, epoch_loss: float, start_time: float):
-        avg_loss = epoch_loss / len(self._data_loader)
-        print(
-            f"Epoch {epoch + 1}/{self._epochs} - Loss: {avg_loss:.4f} - Time Taken {((time.time() - start_time) / 60):2f}",
-            flush=True
-        )
-
-    def _save(self, optimiser: torch.optim.Optimizer):
-        torch.save(
-            self._image_encoder.state_dict(),
-            self._encoder_checkpoint_path + '-image_encoder.pt',
-        )
-
-        torch.save(
-            optimiser.state_dict(),
-            self._encoder_checkpoint_path + '-optimiser.pt',
-        )
 
     def train(self):
         optimiser = optim.AdamW(self._image_encoder.parameters(), lr=3e-4, weight_decay=1e-4)
@@ -125,8 +82,8 @@ class XClrTrainer:
                 optimiser.zero_grad()
 
                 images = images.to(self._device)
-                labels = labels.to(self._device)
-                augmented_images, labels = self._double_aug_and_labels(images, labels)
+                labels = labels.repeat(2).to(self._device)
+                augmented_images = self._double_aug(images)
 
                 sub_sim_graph = self._similarity_graph[labels][:, labels]
                 softmax_sim_graph = nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
@@ -154,5 +111,6 @@ if __name__ == '__main__':
         dataset_path='datasets/ImageNet-S-50/train',
         encoder_checkpoint_path='checkpoints/b256-AdamW-3e-4-CosineAnnealing',
         device='cuda' if torch.cuda.is_available() else 'cpu',
+        num_worker_dl=1,
     )
     trainer.train()
