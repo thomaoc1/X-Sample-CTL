@@ -18,6 +18,7 @@ class XClrTrainer(ClrTrainer):
             device: str,
             label_range: int,
             encoder_checkpoint_base_path: str,
+            resize: int = 224,
             head_out_features: int = 128,
             tau: float = 0.1,
             tau_s: float = 0.1,
@@ -34,7 +35,7 @@ class XClrTrainer(ClrTrainer):
 
         initial_transform = transforms.Compose(
             [
-                transforms.Resize((224, 224)),
+                transforms.Resize((resize, resize)),
                 transforms.PILToTensor(),
             ]
         )

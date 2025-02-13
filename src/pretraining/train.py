@@ -12,6 +12,7 @@ def get_args():
     # Required positional arguments
     parser.add_argument('alg', choices=['simclr', 'xclr'], help='Training algorithm to use')
     parser.add_argument('dataset_path', type=str, help='Dataset to load for training')
+    parser.add_argument('--resize', required=True, type=int, help='Resolution to resize images to')
 
     # Optional arguments with defaults
     parser.add_argument('--batch_size', '-b', required=True, type=int, help='Batch size for training')
@@ -51,6 +52,7 @@ if __name__ == '__main__':
         "batch_size": args.batch_size,
         "device": args.device,
         "head_out_features": args.head_out_features,
+        "resize": args.resize,
         "tau": args.tau,
         "num_workers_dl": args.num_workers,
         "epochs": args.epochs,

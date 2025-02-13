@@ -33,12 +33,12 @@ class SimClrTrainer(ClrTrainer):
             num_workers_dl: int = 4,
             epochs: int = 100,
             encoder_load_path: str | None = None,
-            size: int = 224,
+            resize: int = 224,
     ):
         initial_transform = transforms.Compose(
             [
                 transforms.PILToTensor(),
-                transforms.RandomResizedCrop(size, antialias=True),
+                transforms.RandomResizedCrop(resize, antialias=True),
             ]
         )
 
@@ -49,11 +49,11 @@ class SimClrTrainer(ClrTrainer):
             encoder_checkpoint_base_path=encoder_checkpoint_base_path,
             tau=tau,
             head_out_features=head_out_features,
-            num_worker_dl=num_workers_dl,
+            num_workers_dl=num_workers_dl,
             epochs=epochs,
             encoder_load_path=encoder_load_path,
             initial_transform=initial_transform,
-            image_augmentation_transform=SimClrTrainer.image_augmentation_fn(size),
+            image_augmentation_transform=SimClrTrainer.image_augmentation_fn(resize),
         )
 
     def _compute_loss(self, **kwargs) -> torch.Tensor:
