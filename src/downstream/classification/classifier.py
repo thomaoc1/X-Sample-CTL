@@ -16,13 +16,16 @@ class EmbeddingsClassifier:
         else:
             pass
 
-    def train_classifier(self, X, y, save_path: str | None):
-        # Normalise
+    def train_classifier(self, X, y, save_dir: str | None):
         X_norm = self._scaler.fit_transform(X)
         self._classifier.fit(X_norm, y)
 
-        if save_path:
-            with open(save_path, 'wb') as f:
+        if save_dir:
+            save_dir = os.path.join('checkpoints/classifiers/', save_dir.replace('/', '.'))
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+
+            with open(os.path.join(save_dir, 'lrg-model.pt'), 'wb') as f:
                 pickle.dump(self._classifier, f)
 
     def evaluate(self, X, y):
@@ -33,8 +36,12 @@ class EmbeddingsClassifier:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train and evaluate a classifier on embeddings.")
-    parser.add_argument('data_path', type=str, help='Path to the training/test dataset (encoded features) which must contain (train/test).pt')
-    parser.add_argument('--save_path', type=str, help='Path to save the trained classifier')
+    parser.add_argument(
+        'data_path',
+        type=str,
+        help='Path to the training/test dataset (encoded features) which must contain (train/test).pt'
+        )
+    parser.add_argument('--save', action='store_true', help='Whether to save the trained classifier')
     return parser.parse_args()
 
 
@@ -52,7 +59,7 @@ if __name__ == '__main__':
     model.train_classifier(
         train_features,
         train_labels,
-        save_path=args.save_path,
+        save_dir=args.data_path if args.save else None,
     )
 
     test_accuracy = model.evaluate(test_features, test_labels)

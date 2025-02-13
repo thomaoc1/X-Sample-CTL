@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms as transforms
 from torchvision.datasets import ImageFolder
 
-from src.pretraining.dataset_types.dataset import ValidClrDataset
+from src.pretraining.dataset_types.valid_clr_dataset import ValidClrDataset
 
 
 class ImageFolderDataset(ValidClrDataset):

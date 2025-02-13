@@ -7,7 +7,7 @@ import torch
 from torch import nn, optim
 from torch.cuda.amp import GradScaler, autocast
 
-from src.pretraining.dataset_types.dataset import ValidClrDataset
+from src.pretraining.dataset_types.valid_clr_dataset import ValidClrDataset
 from src.pretraining.encoder import ResNetEncoder
 
 

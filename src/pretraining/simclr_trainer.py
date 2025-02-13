@@ -1,7 +1,7 @@
 import torch
 
 from src.pretraining.abstract_trainer import ClrTrainer
-from src.pretraining.dataset_types.dataset import ValidClrDataset
+from src.pretraining.dataset_types.valid_clr_dataset import ValidClrDataset
 
 
 class SimClrTrainer(ClrTrainer):

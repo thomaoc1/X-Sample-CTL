@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-from torch.fx.node import base_types
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -94,6 +93,6 @@ if __name__ == '__main__':
 
     encode_dataset(
         encoder_weight_path=args.encoder_weights_path,
-        base_save_path=args.base_save_path,
+        model=args.model,
         model_id=args.model_id
     )

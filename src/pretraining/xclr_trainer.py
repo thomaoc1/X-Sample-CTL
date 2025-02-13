@@ -5,7 +5,7 @@ from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
 from src.pretraining.abstract_trainer import ClrTrainer
-from src.pretraining.dataset_types.dataset import ValidClrDataset
+from src.pretraining.dataset_types.valid_clr_dataset import ValidClrDataset
 from src.util import caption_from_labels
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -54,3 +54,4 @@ class XClrTrainer(ClrTrainer):
         sub_sim_graph = self._similarity_graph[labels][:, labels]
         target = nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
         return nn.functional.cross_entropy(encoding_similarities / self._tau, target)
+
