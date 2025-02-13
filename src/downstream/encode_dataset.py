@@ -36,21 +36,20 @@ def init_cifar_loaders():
     return train_loader, test_loader
 
 
-def extract_features_dataset(dataloader: DataLoader, encoder: nn.Module):
+def extract_features_dataset(dataloader: DataLoader, encoder: nn.Module, device: str):
     encodings_list, labels_list = [], []
     for img, label in tqdm(dataloader, total=len(dataloader), desc="Extracting Features"):
         with torch.no_grad():
-            encodings = encoder(img).flatten(1)
-        encodings_list.append(encodings)
-        labels_list.append(label)
+            encodings = encoder(img.to(device)).flatten(1)
+        encodings_list.append(encodings.cpu())
+        labels_list.append(label.cpu())
     encodings = torch.cat(encodings_list, dim=0)
     labels = torch.cat(labels_list, dim=0)
     return encodings, labels
 
 
-def init_encoder(path: str):
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    image_encoder = ResNetEncoder(detach_head=True)
+def init_encoder(path: str, device: str):
+    image_encoder = ResNetEncoder(detach_head=True).to(device)
     image_encoder.load_state_dict(
         torch.load(
             path,
@@ -79,7 +78,8 @@ def save_encoding_label_pairs(encodings, labels, base_path: str, model_id: str, 
 
 
 def encode_dataset(encoder_weight_path: str, base_save_path: str, model_id: str):
-    image_encoder = init_encoder(path=encoder_weight_path)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    image_encoder = init_encoder(path=encoder_weight_path, device=device)
     train_loader, test_loader = init_cifar_loaders()
     train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder)
     test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder)

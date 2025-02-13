@@ -1,3 +1,6 @@
+import argparse
+import os
+
 import torch
 import pickle
 from sklearn.linear_model import LogisticRegression
@@ -27,9 +30,17 @@ class EmbeddingsClassifier:
         return accuracy_score(y, predictions)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train and evaluate a classifier on embeddings.")
+    parser.add_argument('data_path', type=str, help='Path to the training/test dataset (encoded features) which must contain (train/test).pt')
+    parser.add_argument('save_path', type=str, help='Path to save the trained classifier')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    train_set = torch.load('datasets/encoded/simclr/encoded_cifar10_train.pt', weights_only=False)
-    test_set = torch.load('datasets/encoded/simclr/encoded_cifar10_test.pt', weights_only=False)
+    args = parse_args()
+    train_set = torch.load(os.path.join(args.data_path, 'train.pt'), weights_only=False)
+    test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
 
     train_features = train_set['encodings'].numpy()
     train_labels = train_set['labels'].numpy()
@@ -40,7 +51,7 @@ if __name__ == '__main__':
     model.train_classifier(
         train_features,
         train_labels,
-        save_path='checkpoints/classifiers/logreg-simclr-NI-embeddings-model'
+        save_path=args.save_path,
     )
 
     test_accuracy = model.evaluate(test_features, test_labels)
