@@ -65,7 +65,6 @@ class XClrTrainer(ClrTrainer):
             encoded_captions = caption_encoder.encode(captioned_labels)
             self._similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
             self._similarity_graph = self._similarity_graph.to(self._device)
-            print(self._similarity_graph.shape)
 
     def _compute_loss(self, **kwargs):
         labels, encoding_similarities = kwargs['labels'], kwargs['encoding_similarities']
