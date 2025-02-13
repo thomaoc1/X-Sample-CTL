@@ -91,7 +91,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     encode_dataset(
-        encoder_weight_path=args.encoder_weight_path,
+        encoder_weight_path=args.encoder_weights_path,
         base_save_path=args.base_save_path,
         model_id=args.model_id
     )
