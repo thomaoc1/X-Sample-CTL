@@ -47,6 +47,7 @@ class XClrTrainer(ClrTrainer):
             batch_size=batch_size,
             device=device,
             encoder_checkpoint_path=encoder_checkpoint_path,
+            tau=tau,
             head_out_features=head_out_features,
             num_worker_dl=num_worker_dl,
             epochs=epochs,
@@ -55,7 +56,6 @@ class XClrTrainer(ClrTrainer):
             image_augmentation_transform=augmentation,
         )
 
-        self._tau = tau
         self._tau_s = tau_s
         self._labels = [i for i in range(label_range)]
         self._compute_similarity_graph()
