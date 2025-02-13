@@ -23,8 +23,9 @@ To verify, run:
 python test_dataset_setup.py
 ```
 
-## Saving checkpoints
+## Saving Checkpoints
 
 Create a `checkpoints/` directory at the root level. 
+
 
 

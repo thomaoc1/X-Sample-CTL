@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+from torch.fx.node import base_types
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -14,7 +15,7 @@ from src.pretraining.encoder import ResNetEncoder
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('encoder_weights_path', type=str, help='Path to weights for encoder')
-    parser.add_argument('base_save_path', type=str, help='Base directory to save encoding')
+    parser.add_argument('model', choices=['xclr', 'simclr'], type=str, help='Model used for encoder training')
     parser.add_argument('model_id', type=str, help='Unique identifier for trained model (ex. b256_AdamW_3e-4)')
     return parser.parse_args()
 
@@ -63,28 +64,29 @@ def init_encoder(path: str, device: str):
     return image_encoder
 
 
-def save_encoding_label_pairs(encodings, labels, base_path: str, model_id: str, filename: str):
-    new_dir = os.path.join(base_path, model_id)
-    if not os.path.exists(new_dir):
-        os.makedirs(new_dir)
+def save_encoding_label_pairs(encodings, labels, base_save_path: str, filename: str):
+    if not os.path.exists(base_save_path):
+        os.makedirs(base_save_path)
 
     torch.save(
         {
             'encodings': encodings,
             'labels': labels,
         },
-        os.path.join(new_dir, filename)
+        os.path.join(base_save_path, filename)
     )
 
 
-def encode_dataset(encoder_weight_path: str, base_save_path: str, model_id: str):
+def encode_dataset(encoder_weight_path: str, model: str, model_id: str):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     image_encoder = init_encoder(path=encoder_weight_path, device=device)
     train_loader, test_loader = init_cifar_loaders()
     train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder, device=device)
     test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder, device=device)
-    save_encoding_label_pairs(train_encodings, train_labels, base_save_path, model_id, 'train.pt')
-    save_encoding_label_pairs(test_encodings, test_labels, base_save_path, model_id, 'test.pt')
+
+    base_save_path = os.path.join('datasets/encoded/', model, model_id)
+    save_encoding_label_pairs(train_encodings, train_labels, base_save_path, 'train.pt')
+    save_encoding_label_pairs(test_encodings, test_labels, base_save_path, 'test.pt')
 
 
 if __name__ == '__main__':
