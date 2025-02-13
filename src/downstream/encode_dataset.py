@@ -1,3 +1,6 @@
+import argparse
+import os
+
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -6,6 +9,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.pretraining.encoder import ResNetEncoder
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('encoder_weights_path', type=str, help='Path to weights for encoder')
+    parser.add_argument('base_save_path', type=str, help='Base directory to save encoding')
+    parser.add_argument('model_id', type=str, help='Unique identifier for trained model (ex. b256_AdamW_3e-4)')
+    return parser.parse_args()
 
 
 def init_cifar_loaders():
@@ -53,26 +64,34 @@ def init_encoder(path: str):
     return image_encoder
 
 
-def save_encoding_label_pairs(encodings, labels, path: str):
+def save_encoding_label_pairs(encodings, labels, base_path: str, model_id: str, filename: str):
+    new_dir = os.path.join(base_path, model_id)
+    if not os.path.exists(new_dir):
+        os.makedirs(new_dir)
+
     torch.save(
         {
             'encodings': encodings,
             'labels': labels,
         },
-        path,
+        os.path.join(new_dir, filename)
     )
 
 
-
-def encode_dataset():
-    image_encoder = init_encoder(path='checkpoints/encoders/xclr/b256-AdamW-3e-4-NewImpl-image_encoder.pt')
+def encode_dataset(encoder_weight_path: str, base_save_path: str, model_id: str):
+    image_encoder = init_encoder(path=encoder_weight_path)
     train_loader, test_loader = init_cifar_loaders()
     train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder)
     test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder)
-    base_path = 'datasets/encoded/simclr/encoded_cifar10_NI_'
-    save_encoding_label_pairs(train_encodings, train_labels, path=base_path + 'train.pt')
-    save_encoding_label_pairs(test_encodings, test_labels, path=base_path + 'test.pt')
+    save_encoding_label_pairs(train_encodings, train_labels, base_save_path, model_id, 'train.pt')
+    save_encoding_label_pairs(test_encodings, test_labels, base_save_path, model_id, 'test.pt')
 
 
 if __name__ == '__main__':
-    encode_dataset()
+    args = parse_args()
+
+    encode_dataset(
+        encoder_weight_path=args.encoder_weight_path,
+        base_save_path=args.base_save_path,
+        model_id=args.model_id
+    )
