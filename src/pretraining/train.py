@@ -21,7 +21,7 @@ def get_args():
         type=str,
         help='Device to use (cpu/cuda)'
     )
-    parser.add_argument('--label_range', '-lr', default=10, type=int, help='Range of labels')
+    parser.add_argument('--label_range', '-lr', default=50, type=int, help='Range of labels')
     parser.add_argument(
         '--encoder_checkpoint_base_path',
         '-ecbp',
