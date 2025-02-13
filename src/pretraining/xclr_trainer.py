@@ -1,7 +1,6 @@
 import torch
 import os
 import torch.nn as nn
-from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
 from src.pretraining.abstract_trainer import ClrTrainer
@@ -46,12 +45,12 @@ class XClrTrainer(ClrTrainer):
             captioned_labels = caption_from_labels(self._labels)
             encoded_captions = caption_encoder.encode(captioned_labels)
             self._similarity_graph = caption_encoder.similarity(encoded_captions, encoded_captions)
-            self._similarity_graph = self._similarity_graph.to(self._device)
+            self._similarity_graph = self._similarity_graph.to(self._device) / self._tau_s
 
     def _compute_loss(self, **kwargs):
         labels, encoding_similarities = kwargs['labels'], kwargs['encoding_similarities']
         labels = labels.repeat(2).to(self._device)
         sub_sim_graph = self._similarity_graph[labels][:, labels]
-        target = nn.functional.softmax(sub_sim_graph / self._tau_s, dim=1)
+        target = nn.functional.softmax(sub_sim_graph, dim=1)
         return nn.functional.cross_entropy(encoding_similarities / self._tau, target)
 

@@ -114,8 +114,6 @@ class ClrTrainer:
                 scaler.update()
 
                 epoch_loss += loss.item()
-
-            if epoch >= 15:
                 scheduler.step()
 
             epoch_losses.append(epoch_loss)
