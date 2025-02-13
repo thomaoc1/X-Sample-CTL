@@ -56,6 +56,7 @@ class XClrTrainer(ClrTrainer):
             image_augmentation_transform=augmentation,
         )
 
+        self._tau = tau
         self._tau_s = tau_s
         self._labels = [i for i in range(label_range)]
         self._compute_similarity_graph()

@@ -93,6 +93,7 @@ class ClrTrainer:
 
     def train(self):
         optimiser = optim.AdamW(self._image_encoder.parameters(), lr=3e-4, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=len(self._data_loader))
 
         print('=== Starting Training ===', flush=True)
         scaler = GradScaler()
@@ -117,6 +118,9 @@ class ClrTrainer:
                 scaler.update()
 
                 epoch_loss += loss.item()
+
+            if epoch >= 15:
+                scheduler.step()
 
             self._log(epoch=epoch, epoch_loss=epoch_loss, start_time=start)
             self._save(optimiser=optimiser)
