@@ -37,38 +37,22 @@ def extract_features_dataset(dataloader: DataLoader, encoder: nn.Module):
     labels = torch.cat(labels_list, dim=0)
     return encodings, labels
 
-def load_simclr(device: str, path: str):
-    checkpoint_dict = torch.load(
-        path,
-        weights_only=False,
-        map_location=device,
-    )
-    model_weights = checkpoint_dict['state_dict']
-    model = ResNetEncoder(detach_head=True)
-    model.load_state_dict(model_weights)
-    return model
 
-
-def init_encoder(path: str, is_simclr=False):
+def init_encoder(path: str):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    if is_simclr:
-        image_encoder = load_simclr(device, 'checkpoints/encoders/b256-simclr.pt')
-    else:
-        image_encoder = resnet50()
-        image_encoder = nn.Sequential(*list(image_encoder.children())[:-1])
-
-        image_encoder.load_state_dict(
-            torch.load(
-                path,
-                weights_only=True,
-                map_location=device
-            )
+    image_encoder = ResNetEncoder(detach_head=True)
+    image_encoder.load_state_dict(
+        torch.load(
+            path,
+            weights_only=True,
+            map_location=device
         )
+    )
 
     image_encoder.eval()
     image_encoder.requires_grad_(False)
     return image_encoder
+
 
 def save_encoding_label_pairs(encodings, labels, path: str):
     torch.save(
@@ -82,11 +66,11 @@ def save_encoding_label_pairs(encodings, labels, path: str):
 
 
 def encode_dataset():
-    image_encoder = init_encoder(path='checkpoints/encoders/b256-simclr.pt', is_simclr=True)
+    image_encoder = init_encoder(path='checkpoints/encoders/simclr/b256-simclr-NewImpl.pt')
     train_loader, test_loader = init_cifar_loaders()
     train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder)
     test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder)
-    base_path = 'datasets/encoded/simclr/encoded_cifar10_'
+    base_path = 'datasets/encoded/simclr/encoded_cifar10_NI_'
     save_encoding_label_pairs(train_encodings, train_labels, path=base_path + 'train.pt')
     save_encoding_label_pairs(test_encodings, test_labels, path=base_path + 'test.pt')
 
