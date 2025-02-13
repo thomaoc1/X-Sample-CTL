@@ -16,13 +16,14 @@ class EmbeddingsClassifier:
         else:
             pass
 
-    def train_classifier(self, X, y, save_path: str):
+    def train_classifier(self, X, y, save_path: str | None):
         # Normalise
         X_norm = self._scaler.fit_transform(X)
         self._classifier.fit(X_norm, y)
 
-        with open(save_path, 'wb') as f:
-            pickle.dump(self._classifier, f)
+        if save_path:
+            with open(save_path, 'wb') as f:
+                pickle.dump(self._classifier, f)
 
     def evaluate(self, X, y):
         X_norm = self._scaler.fit_transform(X)
@@ -33,7 +34,7 @@ class EmbeddingsClassifier:
 def parse_args():
     parser = argparse.ArgumentParser(description="Train and evaluate a classifier on embeddings.")
     parser.add_argument('data_path', type=str, help='Path to the training/test dataset (encoded features) which must contain (train/test).pt')
-    parser.add_argument('save_path', type=str, help='Path to save the trained classifier')
+    parser.add_argument('--save_path', type=str, help='Path to save the trained classifier')
     return parser.parse_args()
 
 
