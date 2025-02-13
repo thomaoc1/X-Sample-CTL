@@ -1,7 +1,7 @@
 import torch
 from torchvision import transforms
 
-from abstract_trainer import ClrTrainer
+from src.pretraining.abstract_trainer import ClrTrainer
 
 
 class SimClrTrainer(ClrTrainer):

@@ -1,6 +1,5 @@
 import time
 from abc import abstractmethod
-
 import torch
 from torch import nn, optim
 from torch.cuda.amp import GradScaler, autocast
@@ -8,7 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
-from encoder import ResNetEncoder
+from src.pretraining.encoder import ResNetEncoder
 
 
 class ClrTrainer:

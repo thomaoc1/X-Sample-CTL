@@ -1,14 +1,11 @@
-import time
 import torch
 import os
 import torch.nn as nn
-import torch.optim as optim
-from torch.cuda.amp import GradScaler, autocast
 from torchvision.transforms import transforms, autoaugment
 from sentence_transformers import SentenceTransformer
 
-from abstract_trainer import ClrTrainer
-from util import caption_from_labels
+from src.pretraining.abstract_trainer import ClrTrainer
+from src.util import caption_from_labels
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

@@ -1,5 +1,3 @@
-import torch
-
 label_mapping = {
     0: 'goldfish',
     1: 'tiger shark',

@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-from torch.utils.data import DataLoader, TensorDataset
-from torchvision.models import resnet50
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from encoder import ResNetEncoder
+from src.pretraining.encoder import ResNetEncoder
 
 
 def init_cifar_loaders():
