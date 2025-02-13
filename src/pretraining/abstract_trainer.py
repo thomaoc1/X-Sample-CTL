@@ -6,35 +6,30 @@ from datetime import datetime
 import torch
 from torch import nn, optim
 from torch.cuda.amp import GradScaler, autocast
-from torch.utils.data import DataLoader
-from torchvision import transforms
-from torchvision.datasets import ImageFolder
 
+from src.pretraining.dataset_types.dataset import ValidClrDataset
 from src.pretraining.encoder import ResNetEncoder
 
 
 class ClrTrainer:
     def __init__(
             self,
-            dataset_path: str,
-            batch_size: int,
+            dataset: ValidClrDataset,
             device: str,
             encoder_checkpoint_base_path: str,
-            image_augmentation_transform: nn.Module | transforms.Compose,
             tau: float,
             head_out_features: int = 128,
-            num_workers_dl: int = 8,
             epochs: int = 100,
             encoder_load_path: str | None = None,
-            initial_transform: nn.Module | transforms.Compose | None = None,
     ):
-        self._batch_size = batch_size
         self._device = device
         self._epochs = epochs
-        self._image_augmentation_fn = image_augmentation_transform
         self._tau = tau
+
+        self._data_loader = dataset.get_dataloader()
+        self._image_augmentation_fn = dataset.get_gpu_augmentations()
+
         self._init_checkpoint_dir(base_path=encoder_checkpoint_base_path)
-        self._init_data_loader(path=dataset_path, initial_transform=initial_transform, num_workers=num_workers_dl)
         self._init_encoder(out_features=head_out_features, load_path=encoder_load_path)
 
     def _init_checkpoint_dir(self, base_path: str):
@@ -54,22 +49,6 @@ class ClrTrainer:
                 print("Loaded pre-trained weights successfully.")
             except FileNotFoundError:
                 print("No pre-trained weights found. Training from scratch.")
-
-    def _init_data_loader(self, path: str, num_workers: int, initial_transform: nn.Module | transforms.Compose = None):
-        transform = initial_transform if initial_transform is not None else transforms.ToTensor()
-
-        dataset = ImageFolder(
-            root=path,
-            transform=transform,
-        )
-
-        self._data_loader = DataLoader(
-            dataset=dataset,
-            batch_size=self._batch_size,
-            shuffle=True,
-            pin_memory=True,
-            num_workers=num_workers,
-        )
 
     def _double_aug(self, images: torch.Tensor) -> torch.Tensor:
         augmented_images = torch.concat(

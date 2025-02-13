@@ -3,6 +3,7 @@ import os
 
 import torch.cuda
 
+from src.pretraining.dataset_types.image_net_s import ImageNetS
 from src.pretraining.simclr_trainer import SimClrTrainer
 from src.pretraining.xclr_trainer import XClrTrainer
 
@@ -11,8 +12,12 @@ def get_args():
     parser = argparse.ArgumentParser()
     # Required positional arguments
     parser.add_argument('alg', choices=['simclr', 'xclr'], help='Training algorithm to use')
+    parser.add_argument(
+        'dataset',
+        choices=['imagenet-s'],
+        help='Which dataset will be loaded \n Note: Datasets can be added easily by implementing the ValidClrDataset interface'
+        )
     parser.add_argument('dataset_path', type=str, help='Dataset to load for training')
-    parser.add_argument('--resize', required=True, type=int, help='Resolution to resize images to')
 
     # Optional arguments with defaults
     parser.add_argument('--batch_size', '-b', required=True, type=int, help='Batch size for training')
@@ -44,36 +49,47 @@ def create_dir_if_not_exist(path: str):
     if not os.path.exists(path):
         os.makedirs(path)
 
+
 if __name__ == '__main__':
     args = get_args()
-
-    shared_trainer_args = {
-        "dataset_path": args.dataset_path,
-        "batch_size": args.batch_size,
-        "device": args.device,
-        "head_out_features": args.head_out_features,
-        "resize": args.resize,
-        "tau": args.tau,
-        "num_workers_dl": args.num_workers,
-        "epochs": args.epochs,
-        "encoder_load_path": args.encoder_load_path
-    }
 
     base_checkpoint_path = 'checkpoints/encoders/'
     cp_dir = os.path.join(base_checkpoint_path, args.alg)
     create_dir_if_not_exist(cp_dir)
 
+    label_range = None
+    if args.dataset == 'imagenet-s':
+        dataset = ImageNetS(
+            image_folder_path=args.dataset_path,
+            num_workers=args.num_workers,
+            batch_size=args.batch_size,
+            alg=args.alg,
+        )
+        label_range = dataset.label_range
+    else:
+        # Add new dataset after implementing ValidCrlDataset interface
+        exit(1)
+
+    shared_trainer_args = {
+        "dataset": dataset,
+        "device": args.device,
+        "head_out_features": args.head_out_features,
+        "tau": args.tau,
+        "epochs": args.epochs,
+        "encoder_load_path": args.encoder_load_path,
+        "encoder_checkpoint_base_path": cp_dir,
+    }
+
     if args.alg == 'simclr':
         trainer = SimClrTrainer(
             **shared_trainer_args,
-            encoder_checkpoint_base_path=cp_dir
         )
     else:
+        assert label_range, 'Label range must be initialised for X-CLR'
         trainer = XClrTrainer(
             **shared_trainer_args,
-            label_range=args.label_range,
+            label_range=label_range,
             tau_s=args.tau_s,
-            encoder_checkpoint_base_path=cp_dir,
         )
 
     trainer.train()
