@@ -65,3 +65,6 @@ if __name__ == '__main__':
         trainer = XClrTrainer(**shared_trainer_args, label_range=args.label_range, tau_s=args.tau_s)
     else:
         print('Unknown trainer')
+        exit(1)
+
+    trainer.train()

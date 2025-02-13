@@ -12,7 +12,7 @@ class EmbeddingsClassifier:
     def __init__(self, pretrained_path: str | None = None):
         self._scaler = StandardScaler()
         if not pretrained_path:
-            self._classifier = LogisticRegression(max_iter=1000)
+            self._classifier = LogisticRegression(max_iter=1000, verbose=1)
         else:
             pass
 
