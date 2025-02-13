@@ -40,7 +40,7 @@ if __name__ == '__main__':
     model.train_classifier(
         train_features,
         train_labels,
-        save_path='checkpoints/classifiers/logreg-simclr-b256-embeddings-model'
+        save_path='checkpoints/classifiers/logreg-simclr-NI-embeddings-model'
     )
 
     test_accuracy = model.evaluate(test_features, test_labels)

@@ -27,7 +27,7 @@ class SimClrTrainer(ClrTrainer):
             dataset_path: str,
             batch_size: int,
             device: str,
-            encoder_checkpoint_path: str,
+            encoder_checkpoint_base_path: str,
             tau: float = 0.07,
             head_out_features: int = 128,
             num_workers_dl: int = 4,
@@ -46,7 +46,7 @@ class SimClrTrainer(ClrTrainer):
             dataset_path=dataset_path,
             batch_size=batch_size,
             device=device,
-            encoder_checkpoint_path=encoder_checkpoint_path,
+            encoder_checkpoint_base_path=encoder_checkpoint_base_path,
             tau=tau,
             head_out_features=head_out_features,
             num_worker_dl=num_workers_dl,
@@ -81,7 +81,7 @@ if __name__ == '__main__':
         dataset_path='datasets/ImageNet-S-50/train',
         batch_size=256,
         device='cuda' if torch.cuda.is_available() else 'cpu',
-        encoder_checkpoint_path='checkpoints/encoders/b256-simclr.pt',
+        encoder_checkpoint_base_path='checkpoints/encoders/b256-simclr.pt',
         num_workers_dl=8,
     )
 

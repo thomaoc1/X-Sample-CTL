@@ -1,5 +1,8 @@
+import os
 import time
+import pandas as pd
 from abc import abstractmethod
+from datetime import datetime
 import torch
 from torch import nn, optim
 from torch.cuda.amp import GradScaler, autocast
@@ -16,23 +19,30 @@ class ClrTrainer:
             dataset_path: str,
             batch_size: int,
             device: str,
-            encoder_checkpoint_path: str,
+            encoder_checkpoint_base_path: str,
             image_augmentation_transform: nn.Module | transforms.Compose,
             tau: float,
             head_out_features: int = 128,
-            num_worker_dl: int = 8,
+            num_workers_dl: int = 8,
             epochs: int = 100,
             encoder_load_path: str | None = None,
             initial_transform: nn.Module | transforms.Compose | None = None,
     ):
         self._batch_size = batch_size
         self._device = device
-        self._encoder_checkpoint_path = encoder_checkpoint_path
         self._epochs = epochs
         self._image_augmentation_fn = image_augmentation_transform
         self._tau = tau
-        self._init_data_loader(path=dataset_path, initial_transform=initial_transform, num_workers=num_worker_dl)
+        self._init_checkpoint_dir(base_path=encoder_checkpoint_base_path)
+        self._init_data_loader(path=dataset_path, initial_transform=initial_transform, num_workers=num_workers_dl)
         self._init_encoder(out_features=head_out_features, load_path=encoder_load_path)
+
+    def _init_checkpoint_dir(self, base_path: str):
+        now = datetime.now()
+        dir_name = now.strftime("%b%d-%H:%M:%S")
+        self._encoder_checkpoint_path = os.path.join(base_path, dir_name)
+        if not os.path.exists(self._encoder_checkpoint_path):
+            os.makedirs(self._encoder_checkpoint_path)
 
     def _init_encoder(self, out_features: int, load_path=None):
         self._image_encoder = ResNetEncoder(out_dim=out_features).to(self._device)
@@ -75,16 +85,20 @@ class ClrTrainer:
             flush=True
         )
 
-    def _save(self, optimiser: torch.optim.Optimizer):
+    def _save_state(self, optimiser: torch.optim.Optimizer):
         torch.save(
             self._image_encoder.state_dict(),
-            self._encoder_checkpoint_path + '-image_encoder.pt',
+            os.path.join(self._encoder_checkpoint_path, 'encoder.pt')
         )
 
         torch.save(
             optimiser.state_dict(),
-            self._encoder_checkpoint_path + '-optimiser.pt',
+            os.path.join(self._encoder_checkpoint_path, 'optimiser.pt'),
         )
+
+    def _save_losses(self, losses: list):
+        df = pd.DataFrame({"Loss": losses})
+        df.to_csv(os.path.join(self._encoder_checkpoint_path, "losses.csv"), index=False)
 
     @abstractmethod
     def _compute_loss(self, **kwargs) -> torch.Tensor:
@@ -96,6 +110,7 @@ class ClrTrainer:
 
         print('=== Starting Training ===', flush=True)
         scaler = GradScaler()
+        epoch_losses = []
         for epoch in range(self._epochs):
             epoch_loss = 0
             start = time.time()
@@ -121,6 +136,9 @@ class ClrTrainer:
             if epoch >= 15:
                 scheduler.step()
 
+            epoch_losses.append(epoch_loss)
             self._log(epoch=epoch, epoch_loss=epoch_loss, start_time=start)
-            self._save(optimiser=optimiser)
+            self._save_state(optimiser=optimiser)
+
+        self._save_losses(losses=epoch_losses)
 

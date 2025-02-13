@@ -65,7 +65,7 @@ def save_encoding_label_pairs(encodings, labels, path: str):
 
 
 def encode_dataset():
-    image_encoder = init_encoder(path='checkpoints/encoders/simclr/b256-simclr-NewImpl.pt')
+    image_encoder = init_encoder(path='checkpoints/encoders/xclr/b256-AdamW-3e-4-NewImpl-image_encoder.pt')
     train_loader, test_loader = init_cifar_loaders()
     train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder)
     test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder)
