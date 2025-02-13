@@ -6,7 +6,6 @@ from abstract_trainer import ClrTrainer
 
 class SimClrTrainer(ClrTrainer):
 
-
     @staticmethod
     def image_augmentation_fn(size: int):
         kernel_size = max(1, int(0.1 * size))  # Ensure it's at least 1
@@ -48,6 +47,7 @@ class SimClrTrainer(ClrTrainer):
             batch_size=batch_size,
             device=device,
             encoder_checkpoint_path=encoder_checkpoint_path,
+            tau=tau,
             head_out_features=head_out_features,
             num_worker_dl=num_workers_dl,
             epochs=epochs,
@@ -55,8 +55,6 @@ class SimClrTrainer(ClrTrainer):
             initial_transform=initial_transform,
             image_augmentation_transform=SimClrTrainer.image_augmentation_fn(size),
         )
-
-        self._tau = tau
 
     def _compute_loss(self, **kwargs) -> torch.Tensor:
         encoding_similarities = kwargs['encoding_similarities']

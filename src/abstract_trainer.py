@@ -19,6 +19,7 @@ class ClrTrainer:
             device: str,
             encoder_checkpoint_path: str,
             image_augmentation_transform: nn.Module | transforms.Compose,
+            tau: float,
             head_out_features: int = 128,
             num_worker_dl: int = 8,
             epochs: int = 100,
@@ -30,6 +31,7 @@ class ClrTrainer:
         self._encoder_checkpoint_path = encoder_checkpoint_path
         self._epochs = epochs
         self._image_augmentation_fn = image_augmentation_transform
+        self._tau = tau
         self._init_data_loader(path=dataset_path, initial_transform=initial_transform, num_workers=num_worker_dl)
         self._init_encoder(out_features=head_out_features, load_path=encoder_load_path)
 
