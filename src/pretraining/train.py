@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import torch.cuda
 
@@ -22,13 +23,6 @@ def get_args():
         help='Device to use (cpu/cuda)'
     )
     parser.add_argument('--label_range', '-lr', default=50, type=int, help='Range of labels')
-    parser.add_argument(
-        '--encoder_checkpoint_base_path',
-        '-ecbp',
-        type=str,
-        required=True,
-        help='Base path for encoder checkpoints'
-    )
     parser.add_argument('--head_out_features', '-hof', default=128, type=int, help='Output features for the head layer')
     parser.add_argument('--tau', '-t', default=0.1, type=float, help='Temperature parameter for contrastive loss')
     parser.add_argument('--tau_s', '-ts', default=0.1, type=float, help='Secondary temperature parameter')
@@ -44,6 +38,11 @@ def get_args():
 
     return parser.parse_args()
 
+
+def create_dir_if_not_exist(path: str):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 if __name__ == '__main__':
     args = get_args()
 
@@ -51,7 +50,6 @@ if __name__ == '__main__':
         "dataset_path": args.dataset_path,
         "batch_size": args.batch_size,
         "device": args.device,
-        "encoder_checkpoint_base_path": args.encoder_checkpoint_base_path,
         "head_out_features": args.head_out_features,
         "tau": args.tau,
         "num_workers_dl": args.num_workers,
@@ -59,12 +57,21 @@ if __name__ == '__main__':
         "encoder_load_path": args.encoder_load_path
     }
 
+    base_checkpoint_path = 'checkpoints/encoders/'
+    cp_dir = os.path.join(base_checkpoint_path, args.alg)
+    create_dir_if_not_exist(cp_dir)
+
     if args.alg == 'simclr':
-        trainer = SimClrTrainer(**shared_trainer_args)
-    elif args.alg == 'xclr':
-        trainer = XClrTrainer(**shared_trainer_args, label_range=args.label_range, tau_s=args.tau_s)
+        trainer = SimClrTrainer(
+            **shared_trainer_args,
+            encoder_checkpoint_base_path=cp_dir
+        )
     else:
-        print('Unknown trainer')
-        exit(1)
+        trainer = XClrTrainer(
+            **shared_trainer_args,
+            label_range=args.label_range,
+            tau_s=args.tau_s,
+            encoder_checkpoint_base_path=cp_dir,
+        )
 
     trainer.train()
