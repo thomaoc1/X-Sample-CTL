@@ -81,8 +81,8 @@ def encode_dataset(encoder_weight_path: str, base_save_path: str, model_id: str)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     image_encoder = init_encoder(path=encoder_weight_path, device=device)
     train_loader, test_loader = init_cifar_loaders()
-    train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder)
-    test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder)
+    train_encodings, train_labels = extract_features_dataset(dataloader=train_loader, encoder=image_encoder, device=device)
+    test_encodings, test_labels = extract_features_dataset(dataloader=test_loader, encoder=image_encoder, device=device)
     save_encoding_label_pairs(train_encodings, train_labels, base_save_path, model_id, 'train.pt')
     save_encoding_label_pairs(test_encodings, test_labels, base_save_path, model_id, 'test.pt')
 
