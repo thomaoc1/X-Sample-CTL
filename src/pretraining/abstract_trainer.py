@@ -80,8 +80,11 @@ class ClrTrainer:
 
     def _log(self, epoch: int, epoch_loss: float, start_time: float):
         avg_loss = epoch_loss / len(self._data_loader)
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
         print(
-            f"Epoch {epoch + 1}/{self._epochs} - Loss: {avg_loss:.4f} - Time Taken {((time.time() - start_time) / 60):2f}",
+            f"Epoch {epoch + 1}/{self._epochs} - Loss: {avg_loss:.4f} - Time Taken {minutes:02}:{seconds:02}min",
             flush=True
         )
 
