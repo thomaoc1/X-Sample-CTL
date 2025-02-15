@@ -86,13 +86,15 @@ class DatasetEncoder:
         return encodings, labels
 
     def _save_encoding_label_pairs(self, encodings, labels, filename):
+        final_path = os.path.join(self._base_save_path, filename)
         torch.save(
             {
                 'encodings': encodings,
                 'labels': labels,
             },
-            os.path.join(self._base_save_path, filename)
+            final_path,
         )
+        print(f'Encodings saved in {final_path}.')
 
     @staticmethod
     def init_cifar_loaders():
