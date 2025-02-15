@@ -5,6 +5,7 @@ import torch
 import pickle
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 
@@ -61,11 +62,13 @@ if __name__ == '__main__':
     )
 
     if args.no_test:
-        test_accuracy = model.evaluate(train_features, train_labels)
+        train_features, test_features, train_labels, test_labels = train_test_split(
+            train_features, train_labels, test_size=0.2, random_state=42
+        )
     else:
         test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
         test_features = test_set['encodings'].numpy()
         test_labels = test_set['labels'].numpy()
-        test_accuracy = model.evaluate(test_features, test_labels)
 
+    test_accuracy = model.evaluate(test_features, test_labels)
     print(f'Test Accuracy: {test_accuracy * 100:.2f}%')
