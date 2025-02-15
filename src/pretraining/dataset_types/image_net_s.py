@@ -1,4 +1,6 @@
 from typing import Literal
+
+import torch.nn
 from torchvision import transforms
 from torchvision.transforms import autoaugment
 
