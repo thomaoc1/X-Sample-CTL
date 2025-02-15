@@ -55,7 +55,6 @@ class ImageNetS(ImageFolderDataset):
                     transforms.RandomGrayscale(p=0.2),
                     transforms.GaussianBlur(kernel_size=kernel_size),
                     transforms.Lambda(lambd=lambda x: x / 255.0),
-                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                 ]
             )
         else:
@@ -63,6 +62,5 @@ class ImageNetS(ImageFolderDataset):
                 [
                     autoaugment.AutoAugment(policy=autoaugment.AutoAugmentPolicy.IMAGENET),
                     transforms.Lambda(lambd=lambda x: x / 255.0),
-                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ]
             )
