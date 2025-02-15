@@ -70,7 +70,7 @@ class DatasetEncoder:
         if not task_to_dir.get(task, None):
             raise ValueError(f'Task {task} does not exist')
 
-        sub_task_dir = task_to_dir[task]
+        sub_task_dir = os.path.join(task_to_dir[task], 'val')
         loader = DatasetEncoder.init_imgnet9_loaders(sub_task_dir)
         encodings, labels = self._extract_features_dataset(dataloader=loader)
         self._save_encoding_label_pairs(encodings, labels, 'train.pt')
