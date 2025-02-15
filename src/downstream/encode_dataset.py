@@ -123,14 +123,19 @@ class DatasetEncoder:
                 transforms.ToTensor(),
             ]
         )
+
         base_path = 'datasets/ImageNet9/'
+        train_path = os.path.join(base_path, 'original', 'val')
+        test_path = os.path.join(base_path, task, 'val')
+
+        print(f'Loading {train_path} and {test_path}', flush=True)
         train_set = ImageFolder(
-            root=os.path.join(base_path, 'original', 'val'),
+            root=train_path,
             transform=transform
         )
 
         test_set = ImageFolder(
-            root=os.path.join(base_path, task, 'val'),
+            root=test_path,
             transform=transform,
         )
 
