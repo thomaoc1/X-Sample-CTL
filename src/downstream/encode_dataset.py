@@ -25,7 +25,7 @@ class DatasetEncoder:
         self._model_id = model_id
         self._task = task
         self._device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self._base_save_path = os.path.join('datasets/encoded/', self._model, self._task, self._model_id)
+        self._base_save_path = os.path.join('datasets/encoded/', self._model, self._model_id, self._task)
 
         if not os.path.exists(self._base_save_path):
             os.makedirs(self._base_save_path)
@@ -63,17 +63,18 @@ class DatasetEncoder:
 
     def _encode_imgnet9_task(self, task):
         task_to_dir = {
-            'ms': 'datasets/ImageNet9/mixed_same',
-            'mr': 'datasets/ImageNet9/mixed_rand',
-            'nb': 'datasets/ImageNet9/only_fg',
+            'ms': 'mixed_same',
+            'mr': 'mixed_rand',
+            'nb': 'only_fg',
         }
         if not task_to_dir.get(task, None):
             raise ValueError(f'Task {task} does not exist')
 
-        sub_task_dir = os.path.join(task_to_dir[task], 'val')
-        loader = DatasetEncoder.init_imgnet9_loaders(sub_task_dir)
-        encodings, labels = self._extract_features_dataset(dataloader=loader)
-        self._save_encoding_label_pairs(encodings, labels, 'train.pt')
+        train_loader, test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
+        train_encodings, train_labels = self._extract_features_dataset(dataloader=train_loader)
+        test_encodings, test_labels = self._extract_features_dataset(dataloader=test_loader)
+        self._save_encoding_label_pairs(train_encodings, train_labels, 'train.pt')
+        self._save_encoding_label_pairs(test_encodings, test_labels, 'test.pt')
 
     def _extract_features_dataset(self, dataloader: DataLoader):
         encodings_list, labels_list = [], []
@@ -115,23 +116,29 @@ class DatasetEncoder:
         return train_loader, test_loader
 
     @staticmethod
-    def init_imgnet9_loaders(path: str):
+    def init_imgnet9_loaders(task: str):
         transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
             ]
         )
-
-        dataset = ImageFolder(
-            root=path,
+        base_path = 'datasets/ImageNet9/'
+        train_set = ImageFolder(
+            root=os.path.join(base_path, 'original', 'val'),
             transform=transform
         )
 
-        return DataLoader(
-            dataset,
-            batch_size=128,
+        test_set = ImageFolder(
+            root=os.path.join(base_path, task, 'val'),
+            transform=transform,
         )
+
+        train_loader = DataLoader(train_set, batch_size=128)
+        test_loader = DataLoader(test_set, batch_size=128)
+
+        return train_loader, test_loader
+
 
 if __name__ == '__main__':
     args = parse_args()
