@@ -53,6 +53,9 @@ if __name__ == '__main__':
 
     train_features = train_set['encodings'].numpy()
     train_labels = train_set['labels'].numpy()
+    test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
+    test_features = test_set['encodings'].numpy()
+    test_labels = test_set['labels'].numpy()
 
     model = EmbeddingsClassifier()
     model.train_classifier(
@@ -60,15 +63,6 @@ if __name__ == '__main__':
         train_labels,
         save_dir=args.data_path if args.save else None,
     )
-
-    if args.no_test:
-        train_features, test_features, train_labels, test_labels = train_test_split(
-            train_features, train_labels, test_size=0.2, random_state=42
-        )
-    else:
-        test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
-        test_features = test_set['encodings'].numpy()
-        test_labels = test_set['labels'].numpy()
 
     test_accuracy = model.evaluate(test_features, test_labels)
     print(f'Test Accuracy: {test_accuracy * 100:.2f}%')
