@@ -42,18 +42,16 @@ def parse_args():
         help='Path to the training/test dataset (encoded features) which must contain (train/test).pt'
         )
     parser.add_argument('--save', action='store_true', help='Whether to save the trained classifier')
+    parser.add_argument('--no_test', action='store_true', help='Whether to not look for a test set')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_args()
     train_set = torch.load(os.path.join(args.data_path, 'train.pt'), weights_only=False)
-    test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
 
     train_features = train_set['encodings'].numpy()
     train_labels = train_set['labels'].numpy()
-    test_features = test_set['encodings'].numpy()
-    test_labels = test_set['labels'].numpy()
 
     model = EmbeddingsClassifier()
     model.train_classifier(
@@ -62,5 +60,12 @@ if __name__ == '__main__':
         save_dir=args.data_path if args.save else None,
     )
 
-    test_accuracy = model.evaluate(test_features, test_labels)
+    if args.no_test:
+        test_accuracy = model.evaluate(train_features, train_labels)
+    else:
+        test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
+        test_features = test_set['encodings'].numpy()
+        test_labels = test_set['labels'].numpy()
+        test_accuracy = model.evaluate(test_features, test_labels)
+
     print(f'Test Accuracy: {test_accuracy * 100:.2f}%')
