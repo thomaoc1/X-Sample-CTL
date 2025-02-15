@@ -20,22 +20,24 @@ def parse_args():
     return parser.parse_args()
 
 class DatasetEncoder:
-    def __init__(self, task: str, model: str, model_id: str):
+    def __init__(self, path: str, task: str, model: str, model_id: str):
         self._model = model
         self._model_id = model_id
         self._task = task
         self._device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
         self._base_save_path = os.path.join('datasets/encoded/', self._model, self._task, self._model_id)
 
         if not os.path.exists(self._base_save_path):
             os.makedirs(self._base_save_path)
 
+        self._init_encoder(path)
         if self._task == 'cifar10':
             self._encode_cifar10()
-        elif self._task.find('bgd-'):
+        elif self._task.find('bgd-') > -1:
             sub_task = self._task.split('-')[1]
             self._encode_imgnet9_task(task=sub_task)
+        else:
+            raise ValueError(f'Unknown task {self._task}')
 
     def _init_encoder(self, path: str):
         image_encoder = ResNetEncoder(detach_head=True).to(self._device)
@@ -131,6 +133,7 @@ class DatasetEncoder:
 if __name__ == '__main__':
     args = parse_args()
     de = DatasetEncoder(
+        path=args.encoder_weights_path,
         task=args.task,
         model=args.model,
         model_id=args.model_id,
