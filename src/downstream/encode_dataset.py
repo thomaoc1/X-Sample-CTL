@@ -72,7 +72,8 @@ class DatasetEncoder:
 
         sub_task_dir = task_to_dir[task]
         loader = DatasetEncoder.init_imgnet9_loaders(sub_task_dir)
-        self._extract_features_dataset(dataloader=loader)
+        encodings, labels = self._extract_features_dataset(dataloader=loader)
+        self._save_encoding_label_pairs(encodings, labels, 'train.pt')
 
     def _extract_features_dataset(self, dataloader: DataLoader):
         encodings_list, labels_list = [], []
