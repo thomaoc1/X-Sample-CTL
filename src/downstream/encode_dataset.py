@@ -1,5 +1,6 @@
 import argparse
 import os
+import typing
 
 import torch
 import torchvision.transforms as transforms
@@ -16,7 +17,7 @@ def parse_args():
     parser.add_argument('encoder_weights_path', type=str, help='Path to weights for encoder')
     parser.add_argument('model', choices=['xclr', 'simclr'], type=str, help='Model used for encoder training')
     parser.add_argument('model_id', type=str, help='Unique identifier for trained model (ex. b256_AdamW_3e-4)')
-    parser.add_argument('--task', '-t', choices=['cifar10', 'bgd-ms', 'bgd-mr', 'bgd-nb'], type=str, help='Path to the dataset to be encoded')
+    parser.add_argument('--task', '-t', choices=['cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb'], type=str, help='Path to the dataset to be encoded')
     return parser.parse_args()
 
 class DatasetEncoder:
@@ -32,12 +33,23 @@ class DatasetEncoder:
 
         self._init_encoder(path)
         if self._task == 'cifar10':
-            self._encode_cifar10()
+            train_loader, test_loader = DatasetEncoder.init_cifar_loaders()
+        elif self._task == 'stl10':
+            train_loader, test_loader = DatasetEncoder.init_stl10_loaders()
         elif self._task.find('bgd-') > -1:
             sub_task = self._task.split('-')[1]
-            self._encode_imgnet9_task(task=sub_task)
+            task_to_dir = {
+                'ms': 'mixed_same',
+                'mr': 'mixed_rand',
+                'nb': 'only_fg',
+            }
+            if not task_to_dir.get(sub_task, None):
+                raise ValueError(f'Task {sub_task} does not exist')
+            train_loader, test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
         else:
             raise ValueError(f'Unknown task {self._task}')
+
+        self._encode(train_loader, test_loader)
 
     def _init_encoder(self, path: str):
         image_encoder = ResNetEncoder(detach_head=True).to(self._device)
@@ -53,24 +65,7 @@ class DatasetEncoder:
         image_encoder.requires_grad_(False)
         self._image_encoder = image_encoder
 
-
-    def _encode_cifar10(self):
-        train_loader, test_loader = DatasetEncoder.init_cifar_loaders()
-        train_encodings, train_labels = self._extract_features_dataset(dataloader=train_loader)
-        test_encodings, test_labels = self._extract_features_dataset(dataloader=test_loader)
-        self._save_encoding_label_pairs(train_encodings, train_labels, 'train.pt')
-        self._save_encoding_label_pairs(test_encodings, test_labels, 'test.pt')
-
-    def _encode_imgnet9_task(self, task):
-        task_to_dir = {
-            'ms': 'mixed_same',
-            'mr': 'mixed_rand',
-            'nb': 'only_fg',
-        }
-        if not task_to_dir.get(task, None):
-            raise ValueError(f'Task {task} does not exist')
-
-        train_loader, test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
+    def _encode(self, train_loader, test_loader):
         train_encodings, train_labels = self._extract_features_dataset(dataloader=train_loader)
         test_encodings, test_labels = self._extract_features_dataset(dataloader=test_loader)
         self._save_encoding_label_pairs(train_encodings, train_labels, 'train.pt')
@@ -109,6 +104,23 @@ class DatasetEncoder:
 
         train_dataset = datasets.CIFAR10(root="./data", train=True, transform=transform, download=True)
         test_dataset = datasets.CIFAR10(root="./data", train=False, transform=transform, download=True)
+
+        train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+
+        return train_loader, test_loader
+
+    @staticmethod
+    def init_stl10_loaders():
+        transform = transforms.Compose(
+            [
+                transforms.Resize(96),
+                transforms.ToTensor(),
+            ]
+        )
+
+        train_dataset = datasets.STL10(root="./data", split="train", transform=transform, download=True)
+        test_dataset = datasets.STL10(root="./data", split="test", transform=transform, download=True)
 
         train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
