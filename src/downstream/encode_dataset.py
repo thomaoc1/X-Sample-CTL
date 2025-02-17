@@ -36,6 +36,8 @@ class DatasetEncoder:
             train_loader, test_loader = DatasetEncoder.init_cifar_loaders()
         elif self._task == 'stl10':
             train_loader, test_loader = DatasetEncoder.init_stl10_loaders()
+        elif self._task == 'imgnet-s':
+            train_loader, test_loader = DatasetEncoder.init_imgnet_s_loaders()
         elif self._task.find('bgd-') > -1:
             sub_task = self._task.split('-')[1]
             task_to_dir = {
@@ -141,6 +143,34 @@ class DatasetEncoder:
         test_path = os.path.join(base_path, task, 'val')
 
         print(f'Loading {train_path} and {test_path}', flush=True)
+        train_set = ImageFolder(
+            root=train_path,
+            transform=transform
+        )
+
+        test_set = ImageFolder(
+            root=test_path,
+            transform=transform,
+        )
+
+        train_loader = DataLoader(train_set, batch_size=128)
+        test_loader = DataLoader(test_set, batch_size=128)
+
+        return train_loader, test_loader
+
+    @staticmethod
+    def init_imgnet_s_loaders():
+        transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+            ]
+        )
+
+        base_path = os.path.join('datasets', 'ImageNet9')
+        train_path = os.path.join(base_path, 'train')
+        test_path = os.path.join(base_path, 'test')
+
         train_set = ImageFolder(
             root=train_path,
             transform=transform
