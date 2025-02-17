@@ -173,7 +173,7 @@ class DatasetEncoder:
             ]
         )
 
-        base_path = os.path.join('datasets', 'ImageNet9')
+        base_path = os.path.join('datasets', 'ImageNet-S-50')
         train_path = os.path.join(base_path, 'train')
         test_path = os.path.join(base_path, 'test')
 
