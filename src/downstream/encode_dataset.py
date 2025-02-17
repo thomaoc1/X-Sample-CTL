@@ -1,6 +1,5 @@
 import argparse
 import os
-import typing
 
 import torch
 import torchvision.transforms as transforms
@@ -17,8 +16,15 @@ def parse_args():
     parser.add_argument('encoder_weights_path', type=str, help='Path to weights for encoder')
     parser.add_argument('model', choices=['xclr', 'simclr'], type=str, help='Model used for encoder training')
     parser.add_argument('model_id', type=str, help='Unique identifier for trained model (ex. b256_AdamW_3e-4)')
-    parser.add_argument('--task', '-t', choices=['cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb'], type=str, help='Path to the dataset to be encoded')
+    parser.add_argument(
+        '--task',
+        '-t',
+        choices=['imgnet-s', 'cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb'],
+        type=str,
+        help='Path to the dataset to be encoded'
+    )
     return parser.parse_args()
+
 
 class DatasetEncoder:
     def __init__(self, path: str, task: str, model: str, model_id: str):
@@ -195,5 +201,3 @@ if __name__ == '__main__':
         model=args.model,
         model_id=args.model_id,
     )
-
-
