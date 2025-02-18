@@ -20,8 +20,12 @@ def parse_args():
         '--task',
         '-t',
         choices=['imgnet-s', 'cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb'],
+        default=None,
         type=str,
         help='Path to the dataset to be encoded'
+    )
+    parser.add_argument(
+        '--path',
     )
     return parser.parse_args()
 
@@ -43,7 +47,8 @@ class DatasetEncoder:
         elif self._task == 'stl10':
             train_loader, test_loader = DatasetEncoder.init_stl10_loaders()
         elif self._task == 'imgnet-s':
-            train_loader, test_loader = DatasetEncoder.init_imgnet_s_loaders()
+            test_loader = DatasetEncoder.init_imgnet_s_loaders()
+            train_loader = None
         elif self._task.find('bgd-') > -1:
             sub_task = self._task.split('-')[1]
             task_to_dir = {
@@ -73,10 +78,12 @@ class DatasetEncoder:
         image_encoder.requires_grad_(False)
         self._image_encoder = image_encoder
 
-    def _encode(self, train_loader, test_loader):
-        train_encodings, train_labels = self._extract_features_dataset(dataloader=train_loader)
+    def _encode(self, test_loader, train_loader: DataLoader | None):
+        if train_loader:
+            train_encodings, train_labels = self._extract_features_dataset(dataloader=train_loader)
+            self._save_encoding_label_pairs(train_encodings, train_labels, 'train.pt')
+
         test_encodings, test_labels = self._extract_features_dataset(dataloader=test_loader)
-        self._save_encoding_label_pairs(train_encodings, train_labels, 'train.pt')
         self._save_encoding_label_pairs(test_encodings, test_labels, 'test.pt')
 
     def _extract_features_dataset(self, dataloader: DataLoader):
@@ -145,24 +152,16 @@ class DatasetEncoder:
         )
 
         base_path = 'datasets/ImageNet9/'
-        train_path = os.path.join(base_path, 'original', 'val')
         test_path = os.path.join(base_path, task, 'val')
-
-        print(f'Loading {train_path} and {test_path}', flush=True)
-        train_set = ImageFolder(
-            root=train_path,
-            transform=transform
-        )
 
         test_set = ImageFolder(
             root=test_path,
             transform=transform,
         )
 
-        train_loader = DataLoader(train_set, batch_size=128)
         test_loader = DataLoader(test_set, batch_size=128)
 
-        return train_loader, test_loader
+        return test_loader
 
     @staticmethod
     def init_imgnet_s_loaders():
@@ -195,6 +194,9 @@ class DatasetEncoder:
 
 if __name__ == '__main__':
     args = parse_args()
+    if not args.task and not args.path:
+        raise ValueError("Must have a task or path")
+
     de = DatasetEncoder(
         path=args.encoder_weights_path,
         task=args.task,
