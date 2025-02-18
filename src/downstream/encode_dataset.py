@@ -63,7 +63,7 @@ class DatasetEncoder:
             }
             if not task_to_dir.get(sub_task, None):
                 raise ValueError(f'Task {sub_task} does not exist')
-            test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
+            test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[sub_task])
             train_loader = None
         else:
             assert os.path.exists(self._task), "Path does not exist"
