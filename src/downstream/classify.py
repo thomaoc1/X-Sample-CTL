@@ -38,22 +38,37 @@ class EmbeddingsClassifier:
 def parse_args():
     parser = argparse.ArgumentParser(description="Train and evaluate a classifier on embeddings.")
     parser.add_argument(
-        'data_path',
+        '--data_path',
         type=str,
         help='Path to the training/test dataset (encoded features) which must contain (train/test).pt'
-        )
+    )
+    parser.add_argument(
+        '--train',
+        type=str,
+    )
+    parser.add_argument(
+        '--test',
+        type=str,
+    )
     parser.add_argument('--save', action='store_true', help='Whether to save the trained classifier')
-    parser.add_argument('--no_test', action='store_true', help='Whether to not look for a test set')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_args()
-    train_set = torch.load(os.path.join(args.data_path, 'train.pt'), weights_only=False)
+
+    if args.data_path:
+        train_set = torch.load(os.path.join(args.data_path, 'train.pt'), weights_only=False)
+        test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
+    elif args.train and args.test:
+        train_set = torch.load(os.path.join(args.train_path, 'train.pt'), weights_only=False)
+        test_set = torch.load(os.path.join(args.test_path, 'test.pt'), weights_only=False)
+    else:
+        raise ValueError("Either pass a dataset path or two locations for train/test files.")
 
     train_features = train_set['encodings'].numpy()
     train_labels = train_set['labels'].numpy()
-    test_set = torch.load(os.path.join(args.data_path, 'test.pt'), weights_only=False)
+
     test_features = test_set['encodings'].numpy()
     test_labels = test_set['labels'].numpy()
 
