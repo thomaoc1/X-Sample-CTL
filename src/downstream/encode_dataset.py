@@ -53,8 +53,7 @@ class DatasetEncoder:
         elif self._task == 'stl10':
             train_loader, test_loader = DatasetEncoder.init_stl10_loaders()
         elif self._task == 'imgnet-s':
-            test_loader = DatasetEncoder.init_imgnet_s_loaders()
-            train_loader = None
+            train_loader, test_loader = DatasetEncoder.init_imgnet_s_loaders()
         elif self._task.find('bgd-') > -1:
             sub_task = self._task.split('-')[1]
             task_to_dir = {
@@ -64,7 +63,8 @@ class DatasetEncoder:
             }
             if not task_to_dir.get(sub_task, None):
                 raise ValueError(f'Task {sub_task} does not exist')
-            train_loader, test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
+            test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
+            train_loader = None
         else:
             assert os.path.exists(self._task), "Path does not exist"
             train_loader = self.init_img_folder_loader()
