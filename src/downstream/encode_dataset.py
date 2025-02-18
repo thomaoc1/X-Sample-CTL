@@ -19,13 +19,9 @@ def parse_args():
     parser.add_argument(
         '--task',
         '-t',
-        choices=['imgnet-s', 'cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb'],
         default=None,
         type=str,
         help='Path to the dataset to be encoded'
-    )
-    parser.add_argument(
-        '--path',
     )
     return parser.parse_args()
 
@@ -60,7 +56,9 @@ class DatasetEncoder:
                 raise ValueError(f'Task {sub_task} does not exist')
             train_loader, test_loader = DatasetEncoder.init_imgnet9_loaders(task_to_dir[task])
         else:
-            raise ValueError(f'Unknown task {self._task}')
+            assert os.path.exists(self._task), "Path does not exist"
+            train_loader = self.init_img_folder_loader()
+            test_loader = None
 
         self._encode(train_loader, test_loader)
 
@@ -78,13 +76,14 @@ class DatasetEncoder:
         image_encoder.requires_grad_(False)
         self._image_encoder = image_encoder
 
-    def _encode(self, test_loader, train_loader: DataLoader | None):
+    def _encode(self, test_loader: DataLoader | None, train_loader: DataLoader | None):
         if train_loader:
             train_encodings, train_labels = self._extract_features_dataset(dataloader=train_loader)
             self._save_encoding_label_pairs(train_encodings, train_labels, 'train.pt')
 
-        test_encodings, test_labels = self._extract_features_dataset(dataloader=test_loader)
-        self._save_encoding_label_pairs(test_encodings, test_labels, 'test.pt')
+        if test_loader:
+            test_encodings, test_labels = self._extract_features_dataset(dataloader=test_loader)
+            self._save_encoding_label_pairs(test_encodings, test_labels, 'test.pt')
 
     def _extract_features_dataset(self, dataloader: DataLoader):
         encodings_list, labels_list = [], []
@@ -192,11 +191,25 @@ class DatasetEncoder:
         return train_loader, test_loader
 
 
+    def init_img_folder_loader(self):
+        transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+            ]
+        )
+
+        dataset = ImageFolder(
+            root=self._task,
+            transform=transform,
+        )
+
+        train_loader = DataLoader(dataset, batch_size=128)
+
+        return train_loader
+
 if __name__ == '__main__':
     args = parse_args()
-    if not args.task and not args.path:
-        raise ValueError("Must have a task or path")
-
     de = DatasetEncoder(
         path=args.encoder_weights_path,
         task=args.task,
