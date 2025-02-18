@@ -21,7 +21,7 @@ def parse_args():
         '-t',
         default=None,
         type=str,
-        help='Path to the dataset to be encoded'
+        help="Path to the dataset to be encoded or choices=['imgnet-s', 'cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb']"
     )
     return parser.parse_args()
 
