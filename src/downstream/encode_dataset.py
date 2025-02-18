@@ -24,16 +24,25 @@ def parse_args():
         required=True,
         help="Path to the dataset to be encoded or choices=['imgnet-s', 'cifar10', 'stl10', 'bgd-ms', 'bgd-mr', 'bgd-nb']"
     )
+    parser.add_argument(
+        '--name'
+    )
     return parser.parse_args()
 
 
 class DatasetEncoder:
-    def __init__(self, path: str, task: str, model: str, model_id: str):
+    def __init__(self, path: str, task: str, model: str, model_id: str, name: str | None):
         self._model = model
         self._model_id = model_id
+        self._name = name
         self._task = task
         self._device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self._base_save_path = os.path.join('datasets/encoded/', self._model, self._model_id, self._task)
+        self._base_save_path = os.path.join(
+            'datasets/encoded/',
+            self._model,
+            self._model_id,
+            self._name if self._name else self._task
+        )
 
         if not os.path.exists(self._base_save_path):
             os.makedirs(self._base_save_path)
@@ -191,7 +200,6 @@ class DatasetEncoder:
 
         return train_loader, test_loader
 
-
     def init_img_folder_loader(self):
         transform = transforms.Compose(
             [
@@ -209,6 +217,7 @@ class DatasetEncoder:
 
         return train_loader
 
+
 if __name__ == '__main__':
     args = parse_args()
     de = DatasetEncoder(
@@ -216,4 +225,5 @@ if __name__ == '__main__':
         task=args.task,
         model=args.model,
         model_id=args.model_id,
+        name=args.name,
     )
