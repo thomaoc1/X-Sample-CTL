@@ -66,6 +66,14 @@ python -m src.downstream.classification.classifier path/to/encoded/dataset [--sa
 
 This will output an accuracy score and save you classifier in `checkpoints/classifiers/path.to.encoded.dataset/`
 
+## References
 
+[1] Chen, T., Kornblith, S., Norouzi, M., & Hinton, G. (2020).  
+*A simple framework for contrastive learning of visual representations.*  
+In *International Conference on Machine Learning* (pp. 1597–1607). PMLR.  
+
+[2] Sobal, V., Ibrahim, M., Balestriero, R., Cabannes, V., Bouchacourt, D., Astolfi, P., Cho, K., & LeCun, Y. (2024).  
+*X-Sample Contrastive Loss: Improving Contrastive Learning with Sample Similarity Graphs.*  
+*arXiv preprint arXiv:2407.18134*.  
 
 
