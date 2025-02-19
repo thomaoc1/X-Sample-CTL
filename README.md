@@ -78,4 +78,9 @@ In *International Conference on Machine Learning* (pp. 1597–1607). PMLR.
 *X-Sample Contrastive Loss: Improving Contrastive Learning with Sample Similarity Graphs.*  
 *arXiv preprint arXiv:2407.18134*.  
 
+[3] Gao, S., Li, Z.-Y., Yang, M.-H., Cheng, M.-M., Han, J., & Torr, P. (2022).  
+*Large-scale Unsupervised Semantic Segmentation.*  
+*IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI).*  
+
+
 
