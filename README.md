@@ -1,5 +1,5 @@
 # X-CLR, SimCLR Implementations
-This work implements X-CLR [1] and SimCLR [2] using PyTorch. We used ImageNet-S-50 [3] when testing with various downstream tasks but the code is modular enough to allow for any dataset which implements the `src.pretraining.dataset_types.ValidClrDataset` interface.
+This work implements X-CLR [1] and SimCLR [2] using PyTorch. We used ImageNet-S-50 [3] for pretraining with various downstream tasks but the code is modular enough to allow for any dataset which implements the `src.pretraining.dataset_types.ValidClrDataset` interface.
 
 
 ## Python Environment
